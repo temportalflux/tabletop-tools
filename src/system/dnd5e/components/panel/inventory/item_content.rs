@@ -638,70 +638,63 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 		// NOTE: Could optimize by having the metadata for the item accessible to the function
 		let item_metadata = item.clone().to_metadata();
 		let iter = state.user_tags().tags().iter();
-		// filter to only include tags already not applied to this item
-		let iter = iter.filter(|user_tag| !item.user_tags.contains(&user_tag.tag));
-		// filter to only include tags which have not been applied the max amount of times
-		let iter = iter.filter(|user_tag| match &user_tag.max_count {
-			None => true,
-			Some(max) => {
-				let usages = state.user_tags().usages_of(&user_tag.tag);
-				let usages = usages.map(Vec::len).unwrap_or(0);
-				usages < *max
-			}
-		});
 		// filter to only include tags relevant to this specific item
 		let iter = iter.filter(|user_tag| match &user_tag.filter {
 			None => true,
 			Some(filter) => filter.as_criteria().is_relevant(&item_metadata),
 		});
-		let iter = iter.map(|user_tag| &user_tag.tag);
+		// Map to collect metadata about each tag; if it can be applied to more items and if its applied to the item
+		let iter = iter.map(|user_tag| {
+			let is_applied = item.user_tags.contains(&user_tag.tag);
+
+			let has_available_usages = match &user_tag.max_count {
+				None => true,
+				Some(max) => {
+					let usages = state.user_tags().usages_of(&user_tag.tag);
+					let usages = usages.map(Vec::len).unwrap_or(0);
+					usages < *max
+				}
+			};
+
+			(&user_tag.tag, is_applied, has_available_usages)
+		});
 		iter.collect::<Vec<_>>()
 	};
-	// TODO(bug): Adding a user tag should refresh the context menu, it does not currently.
-	let add_user_tag = (!available_tags.is_empty()).then(|| {
-		mutate_item(&props.location, &state, |tag: String, item| {
-			item.user_tags.push(tag);
+	let toggle_user_tag = (!available_tags.is_empty()).then(|| {
+		mutate_item(&props.location, &state, |data, item| {
+			let Some(tag) = data else { return MutatorImpact::None };
+			let is_applied = item.user_tags.contains(&tag);
+			if is_applied {
+				item.user_tags.retain(|item| item != &tag);
+			}
+			else {
+				item.user_tags.push(tag);
+			}
 			MutatorImpact::Recompile
 		})
 	}).flatten();
-	let add_tag_button = add_user_tag.map(|add_user_tag| {
-		html!(<div class="btn-group">
-			<button class="btn btn-sm dropdown-toggle tag" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-				{"Add Tag"}
-			</button>
-			<ul class="dropdown-menu">
-				{available_tags.into_iter().map(|tag| {
-					let onclick = add_user_tag.reform({
-						let tag = tag.clone();
-						move |_| tag.clone()
-					});
-					html!(<li><a class="dropdown-item" {onclick}>{tag}</a></li>)
-				}).collect::<Vec<_>>()}
-			</ul>
-		</div>)
+	let add_tag_button = toggle_user_tag.map(|toggle_user_tag| {
+		let onchange = toggle_user_tag.reform({
+			move |evt: web_sys::Event| evt.select_value()
+		});
+		html!(<select class="form-select form-select-sm w-auto" {onchange}>
+			<option selected=true>{"Select Tag(s)"}</option>
+			{available_tags.into_iter().map(|(tag, is_applied, has_available_usages)| {
+				let can_select = is_applied || has_available_usages;
+				html!(<option value={tag.clone()} disabled={!can_select}>
+					{is_applied.then_some(html!("✅ "))}
+					{tag}
+				</option>)
+			}).collect::<Vec<_>>()}
+		</select>)
 	});
 	if !item.user_tags.is_empty() || add_tag_button.is_some() {
 		sections.push(html! {
 			<div class="property user-tags">
 				<strong>{"User Tags:"}</strong>
-				<span>
+				<span class="d-flex justify-content-start align-items-center">
 					{add_tag_button}
-					{item.user_tags.iter().map(|tag_id| {
-						// TODO: user-tags need a little close/X button and should remove the tag from the
-						// item when that little X is clicked (but not when the tag as a whole is clicked)
-						// TODO: need to figure out UX for this, because Tag is a custom element and just putting
-						// btn-close in the content causes issues with pointer-events.
-						let onclick = Callback::from({
-							let tag = tag_id.clone();
-							move |_| {
-								log::debug!("remove tag {tag:?}");
-							}
-						});
-						html!(<div class="btn-group" role="group">
-							<Tag>{tag_id.as_str()}</Tag>
-							<button type="button" class="btn-close" aria-label="Close" {onclick} />
-						</div>)
-					}).collect::<Vec<_>>()}
+					{item.user_tags.iter().map(|tag_id| html!(<Tag>{tag_id.as_str()}</Tag>)).collect::<Vec<_>>()}
 				</span>
 			</div>
 		});

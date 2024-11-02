@@ -392,7 +392,7 @@ impl mutator::Group for Inventory {
 			}
 
 			let path_to_item = parent.join(entry.id_as_path(), Some(PathBuf::from(&entry.item.name)));
-			for tag in &entry.item.tags {
+			for tag in &entry.item.user_tags {
 				stats.user_tags_mut().add_tag_usage(tag, &path_to_item);
 			}
 		}

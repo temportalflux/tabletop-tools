@@ -57,13 +57,13 @@ columnSorting:
 - [mutator-to-grant-uses-on-rest](tasks/mutator-to-grant-uses-on-rest.md)
 - [spellcasting-limited-by-both-slot-and-uses-at-the-same-time](tasks/spellcasting-limited-by-both-slot-and-uses-at-the-same-time.md)
 - [mutator-to-disable-action-budget](tasks/mutator-to-disable-action-budget.md)
+- [item-user-tag-mutations-are-really-slow](tasks/item-user-tag-mutations-are-really-slow.md)
 
 ## In Progress
 
-- [pact-weapon-identifier-query](tasks/pact-weapon-identifier-query.md)
-
 ## Done
 
+- [pact-weapon-identifier-query](tasks/pact-weapon-identifier-query.md)
 - [hobgoblin-reserves-of-strength](tasks/hobgoblin-reserves-of-strength.md)
 - [spells-support-healing](tasks/spells-support-healing.md)
 - [conditions-are-not-being-saved-to-persistent-data](tasks/conditions-are-not-being-saved-to-persistent-data.md)
