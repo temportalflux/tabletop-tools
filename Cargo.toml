@@ -82,6 +82,8 @@ graphql_client = { version = "0.14", features = ["reqwest"] }
 tokio = { version="1.26", features=["sync"] }
 base64ct = { version="1.6", features=["alloc"] }
 async-recursion = "1"
+tracing-wasm = "0.2"
+console_error_panic_hook = "0.1"
 
 [target.'cfg(windows)'.dependencies]
 tokio = { version="1.26", features=["full"] }

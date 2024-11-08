@@ -5,6 +5,8 @@ use yew::prelude::*;
 #[cfg(target_family = "wasm")]
 fn main() {
 	logging::wasm::init(logging::wasm::Config::default().prefer_target());
+	console_error_panic_hook::set_once();
+	tracing_wasm::set_as_global_default();
 	yew::Renderer::<App>::new().render();
 }
 #[cfg(target_family = "windows")]
