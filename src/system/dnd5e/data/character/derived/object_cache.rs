@@ -39,6 +39,7 @@ pub struct AdditionalObjectData {
 impl AdditionalObjectCache {
 	/// Inserts new pending objects into the cache.
 	pub fn insert(&mut self, object_data: AdditionalObjectData) {
+		log::info!(target: "object-cache", "Inserting pending objects:\n{:?}", object_data.ids.iter().map(SourceId::to_string).collect::<Vec<_>>());
 		self.pending.push(object_data);
 	}
 
@@ -46,16 +47,25 @@ impl AdditionalObjectCache {
 		!self.pending.is_empty()
 	}
 
+	pub fn take_cached_objects(&mut self) -> Self {
+		Self {
+			object_cache: self.object_cache.drain().collect(),
+			..Default::default()
+		}
+	}
+
 	pub async fn update_objects(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
 		// TODO: Because ObjectCacheProvider contains both the databaser and system depot,
 		// we should be able to generically deserialize objects into system components,
 		// and then store the generic data which is a mutator::Group instead of the hard types.
 		// We can re-serialize them in the same manner perhaps.
+		log::info!(target: "object-cache", "Update objects in cache: {:?}", self.object_cache.keys().map(SourceId::to_string).collect::<Vec<_>>());
 		for AdditionalObjectData { ids, object_type_id, .. } in &self.pending {
 			for object_id in ids {
 				if self.object_cache.contains_key(object_id) {
 					continue;
 				}
+				log::info!(target: "object-cache", "Querying database for object {object_id}");
 				if object_type_id == Bundle::id() {
 					let bundle = provider
 						.database

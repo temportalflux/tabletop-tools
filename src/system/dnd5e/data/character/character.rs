@@ -25,7 +25,7 @@ use std::{
 	str::FromStr,
 };
 
-use super::{SelectedSpells, UserTags};
+use super::{AdditionalObjectCache, SelectedSpells, UserTags};
 
 #[derive(Clone, PartialEq)]
 pub enum ActionEffect {
@@ -37,10 +37,20 @@ pub enum ActionEffect {
 /// structure for all character data.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Character {
+	// Data applied to all characters based on the modules present in the character's game system
 	default_blocks: Vec<DefaultsBlock>,
+	// The persistent data that is actually saved uniquely for this character.
 	character: Persistent,
+	// Data built by processing default_blocks and the persistent character data.
+	// Will be cleared and recompiled every time there is a mutation.
 	derived: Derived,
+	// Mutators encountered when processing default_blocks and persistent character data during derived data recompile.
+	// This is a sorted list according to the dependencies of each mutator. This list is a temporary state used during recompile,
+	// so that mutators which result in additional mutators can be tracked.
 	mutators: Vec<MutatorEntry>,
+	// Objects normally stored in the database, which have been cached in local memory.
+	// Objects will be cached for varying lengths of time, generlaly correlated with number of recompiles or time duration.
+	additional_objects: AdditionalObjectCache,
 }
 #[derive(Clone, PartialEq, Debug)]
 struct MutatorEntry {
@@ -52,19 +62,16 @@ struct MutatorEntry {
 #[cfg(test)]
 impl From<Persistent> for Character {
 	fn from(persistent: Persistent) -> Self {
-		let mut character = Self {
-			default_blocks: Vec::new(),
-			character: persistent,
-			derived: Derived::default(),
-			mutators: Vec::new(),
-		};
+		let mut character = Self::new(persistent, Vec::new());
 		character.recompile_minimal();
 		character
 	}
 }
 impl Character {
 	pub fn new(persistent: Persistent, default_blocks: Vec<DefaultsBlock>) -> Self {
-		Self { default_blocks, character: persistent, derived: Derived::default(), mutators: Vec::new() }
+		Self {
+			default_blocks, character: persistent,
+			derived: Derived::default(), mutators: Vec::new(), additional_objects: Default::default(), }
 	}
 
 	pub fn clear_derived(&mut self) {
@@ -97,9 +104,16 @@ impl Character {
 		self.initiaize_recompile();
 		self.insert_mutators();
 
+		// TODO: recompiling should be an operation that happens in the background. Mutations can be applied
+		// (like editing tags, casting spells, changing the number of items, equipping an item),
+		// those mutations are instantaneous, and then a recompile should be asynchronous/background
+		// and not prevent the UI from repopulating.
+
 		let mut cache_loops = 0usize;
-		let mut cache = super::AdditionalObjectCache::default();
-		while self.derived.additional_objects.has_pending_objects() {
+		// Take all objects that have already been fetched, leaving only the list of pending ids.
+		let mut cache = self.additional_objects.take_cached_objects();
+		// As long as there are pending objects to fetch, try to do a round of queries.
+		while self.additional_objects.has_pending_objects() {
 			if cache_loops > 3 {
 				log::error!(target: "derived",
 					"Hit max number of recursive bundle processing loops. \
@@ -108,12 +122,16 @@ impl Character {
 				);
 				break;
 			}
-			cache += std::mem::take(&mut self.derived.additional_objects);
+			// Move the pending lists into the new cache (where the already fetched objects are).
+			cache += std::mem::take(&mut self.additional_objects);
+			// Do any additional fetching, resolving all pending objects
 			cache.update_objects(&provider).await?;
+			// Apply any newly fetched objects (where more pending objects could be requested).
 			cache.apply_mutators(self);
 			cache_loops += 1;
 		}
-		self.derived.additional_objects = cache;
+		// Move the set of all fetched objects back onto the character
+		self.additional_objects = cache;
 
 		self.apply_cached_mutators();
 
@@ -406,7 +424,7 @@ impl Character {
 	}
 
 	pub fn add_bundles(&mut self, object_data: super::AdditionalObjectData) {
-		self.derived.additional_objects.insert(object_data);
+		self.additional_objects.insert(object_data);
 	}
 
 	pub fn add_feature(&mut self, feature: Feature, parent_path: &ReferencePath) {
