@@ -20,7 +20,7 @@ netlify-oauth = { path = "crates/netlify-oauth" }
 github = { path = "crates/github" }
 database = { path = "crates/database" }
 any-range = "0.1"
-wasm-bindgen = "0.2"
+wasm-bindgen = "^0.2"
 log = { version = "0.4", features = ["std"] }
 yew = { version = "0.21", features = ["csr"] }
 yew-router = { version = "0.18" }
@@ -29,7 +29,7 @@ gloo-events = "0.2"
 gloo-storage = "0.3"
 gloo-utils = "0.2"
 gloo-timers = { version = "0.3", features = ["futures"] }
-web-sys = { version = "0.3", features = [
+web-sys = { version = "^0.3", features = [
 	"DataTransfer", "Document", "DomTokenList", "VisibilityState",
 	"HtmlCollection", "HtmlSelectElement", "HtmlInputElement", "HtmlTextAreaElement",
 	"Request", "Storage", "Window",
@@ -40,15 +40,18 @@ web-sys = { version = "0.3", features = [
 	"UiEvent", "CssStyleDeclaration",
 	"IdbFactory", "IdbOpenDbRequest",
 ] }
-wasm-bindgen-futures = "0.4"
+wasm-bindgen-futures = "^0.4"
 futures = "0.3"
+# blocked by crates/github graphql_client needing 0.15 (https://github.com/graphql-rust/graphql-client/pull/490)
 reqwest = { version = "0.11", features = ["json"] }
 serde = "1.0"
 serde_json = "1.0"
 anyhow = "1.0"
-thiserror = "1.0"
+thiserror = "^2.0"
 urlencoding = "2.1"
-kdl = { version = "5.0.0-alpha.0", git = "https://github.com/kdl-org/kdl-rs" }
+# Must re-evaluate kdl now that the main branch is on 0.6-alpha with new query language api
+# kdl = { version = "5.0.0-alpha.0", git = "https://github.com/kdl-org/kdl-rs" }
+kdl = { path = "crates/kdl-rs" }
 yew-hooks = "0.3"
 url = "2.3"
 fluvio-wasm-timer = "0.2"

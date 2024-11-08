@@ -31,3 +31,6 @@
 [submodule "modules/wotc-phb2024"]
 	path = modules/wotc-phb2024
 	url = git@github.com:flux-tabletop/wotc-phb2024.git
+[submodule "crates/kdl-rs"]
+	path = crates/kdl-rs
+	url = git@github.com:kdl-org/kdl-rs.git
