@@ -45,14 +45,13 @@ impl IdPath {
 	}
 
 	pub fn set_path(&self, path: &ReferencePath) {
-		let mut path = match self.is_absolute {
-			false => path.clone(),
-			true => ReferencePath::new(),
+		let path = match (self.is_absolute, &self.id) {
+			(false, None) => path.normalized(),
+			(true, None) => ReferencePath::new(),
+			(false, Some(id)) => path.join(id, None).normalized(),
+			(true, Some(id)) => ReferencePath::new_path(id, None).normalized(),
 		};
-		if let Some(id) = &self.id {
-			path = path.join(id, None);
-		}
-		*self.absolute_path.write().unwrap() = path.normalized();
+		*self.absolute_path.write().unwrap() = path;
 	}
 
 	pub fn data(&self) -> Option<PathBuf> {

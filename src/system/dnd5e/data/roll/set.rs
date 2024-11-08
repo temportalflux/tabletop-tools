@@ -181,20 +181,23 @@ impl std::fmt::Display for RollSet {
 	}
 }
 
+static ROLL_SET_REGEX: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|| {
+	// https://regexr.com/84if5
+	// a. (optional)'-'
+	// b. 0-9 at least once
+	// c. (optional) group of:
+	//    i. 'd'
+	//    ii. 0-9 at least once
+	// Valid formats: "10", "-10", "1d4", "1d12+10", "1d8-5", "1d4+2d6-2"
+	Regex::new(r"-?[0-9]+(?:d[0-9]+)?").expect("invalid roll set regex")
+});
 impl std::str::FromStr for RollSet {
 	type Err = super::ParseRollError;
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		// https://regexr.com/84if5
-		// a. (optional)'-'
-		// b. 0-9 at least once
-		// c. (optional) group of:
-		//    i. 'd'
-		//    ii. 0-9 at least once
-		let regex = Regex::new(r"-?[0-9]+(?:d[0-9]+)?").expect("invalid roll set regex");
-
-		// Valid formats: "10", "-10", "1d4", "1d12+10", "1d8-5", "1d4+2d6-2"
 		let mut set = Self::default();
-		for regex_match in regex.find_iter(s) {
+		// NOTE: Regex search is expensive. If I ever prioritize performance over data storage format,
+		// it would certainly be more performant to store Roll(Set) as a mathematic combination enum rather than a roll-string.
+		for regex_match in ROLL_SET_REGEX.find_iter(s) {
 			let roll = Roll::from_str(regex_match.as_str())?;
 			set.push(roll);
 		}
