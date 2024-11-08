@@ -61,6 +61,8 @@ columnSorting:
 
 ## In Progress
 
+- [add-a-spell-object-cache-for-character-sheets](tasks/add-a-spell-object-cache-for-character-sheets.md)
+
 ## Done
 
 - [pact-weapon-identifier-query](tasks/pact-weapon-identifier-query.md)

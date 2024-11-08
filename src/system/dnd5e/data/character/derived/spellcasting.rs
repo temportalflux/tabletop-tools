@@ -105,8 +105,6 @@ impl Spellcasting {
 	pub async fn fetch_spell_objects(
 		&mut self, provider: &ObjectCacheProvider, persistent: &Persistent,
 	) -> anyhow::Result<()> {
-		// TODO: Need a character-sheet-global spell cache because this gets executed every recompile,
-		// and always fetches from the databse.
 		self.fetch_always_prepared(provider).await?;
 		self.ritual_spells = self.fetch_rituals(provider, persistent).await?;
 		Ok(())
