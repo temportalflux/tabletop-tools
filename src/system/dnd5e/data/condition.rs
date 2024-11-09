@@ -35,10 +35,7 @@ impl Condition {
 		for indirect in pending {
 			match indirect {
 				Indirect::Id(condition_id) => {
-					let condition = provider
-						.database
-						.get_typed_entry::<Condition>(condition_id.unversioned(), provider.system_depot.clone(), None)
-						.await?;
+					let condition = provider.get_typed_entry::<Condition>(condition_id.unversioned(), None).await?;
 					match condition {
 						None => self.implied.push(Indirect::Id(condition_id)),
 						Some(condition) => resolved.push(condition),

@@ -50,18 +50,18 @@ impl ReferencePath {
 	pub fn new() -> Self {
 		Self { data: PathBuf::new(), display: PathBuf::new() }
 	}
-	
-	pub fn new_path<Subpath>(data: Subpath, display: Option<Subpath>) -> Self 
+
+	pub fn new_path<Subpath>(data: Subpath, display: Option<Subpath>) -> Self
 	where
 		Subpath: AsRef<Path>,
-		{
-			Self {
-				data: data.as_ref().to_owned(),
-				display: match display {
-					None => data.as_ref().to_owned(),
-					Some(path) => path.as_ref().to_owned(),
-				},
-			}
+	{
+		Self {
+			data: data.as_ref().to_owned(),
+			display: match display {
+				None => data.as_ref().to_owned(),
+				Some(path) => path.as_ref().to_owned(),
+			},
+		}
 	}
 
 	pub fn join<Subpath>(&self, data: Subpath, display: Option<Subpath>) -> Self

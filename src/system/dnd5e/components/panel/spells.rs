@@ -14,8 +14,7 @@ use crate::{
 			},
 			data::{
 				character::{
-					spellcasting::{AbilityOrStat, CasterKind, CastingMethod, RitualCapability, SpellEntry},
-					SpellHealingBonus, MAX_SPELL_RANK,
+					spellcasting::{AbilityOrStat, CasterKind, CastingMethod, RitualCapability, SpellEntry}, ObjectCacheArc, SpellHealingBonus, MAX_SPELL_RANK
 				},
 				proficiency,
 				roll::Roll,
@@ -1427,6 +1426,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let database = use_context::<Database>().unwrap();
 	let system_depot = use_context::<system::Registry>().unwrap();
+	let object_cache = use_context::<ObjectCacheArc>().unwrap();
 
 	let criteria_handle = use_state({
 		let criteria = props.criteria.clone();
@@ -1491,7 +1491,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 						let query = Query::<Entry>::subset(&database, Some(index)).await;
 						let Ok(query) = query else { return Ok(spells) };
 						let query = query.apply_opt(criteria, Query::filter_by);
-						let mut query = query.parse_as::<Spell>(&system_depot);
+						let mut query = query.parse_as_cached::<Spell>(&system_depot, &object_cache);
 						while let Some((_entry, spell)) = query.next().await {
 							insert_spell(spell);
 						}

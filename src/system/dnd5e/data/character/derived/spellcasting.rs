@@ -112,8 +112,7 @@ impl Spellcasting {
 
 	async fn fetch_always_prepared(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
 		for (id, spell_entry) in &mut self.always_prepared {
-			spell_entry.spell =
-				provider.database.get_typed_entry::<Spell>(id.clone(), provider.system_depot.clone(), None).await?;
+			spell_entry.spell = provider.get_typed_entry::<Spell>(id.clone(), None).await?;
 		}
 		Ok(())
 	}
@@ -151,17 +150,20 @@ impl Spellcasting {
 		let index = EntryInSystemWithType::new::<Spell>(DnD5e::id());
 		let query = Query::subset(&provider.database, Some(index)).await?;
 		let query = query.filter_by(criteria);
-		let mut query = query.parse_as::<Spell>(&provider.system_depot);
+		let mut query = query.parse_as_cached::<Spell>(&provider.system_depot, &provider.object_cache);
 
 		let mut ritual_spell_cache = HashMap::new();
 		let mut caster_ritual_list_cache = MultiMap::new();
 		while let Some((entry, spell)) = query.next().await {
+			let spell_id = spell.id.unversioned();
 			for (caster_id, criteria) in &caster_filters {
 				if criteria.is_relevant(&entry.metadata) {
-					caster_ritual_list_cache.insert((*caster_id).clone(), spell.id.unversioned());
+					// TODO: extend Query so that it checks against the object cache before reading from source
+					// provider.insert_cache(spell_id);
+					caster_ritual_list_cache.insert((*caster_id).clone(), spell_id.clone());
 				}
 			}
-			ritual_spell_cache.insert(spell.id.unversioned(), spell);
+			ritual_spell_cache.insert(spell_id, spell);
 		}
 
 		Ok(RitualSpellCache {

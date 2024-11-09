@@ -206,11 +206,7 @@ impl<T: AsItem> ItemContainer<T> {
 	pub async fn resolve_indirection(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
 		// Any item templates need to be resolved to their full items
 		for (item_id, count) in self.item_templates.drain().collect::<Vec<_>>() {
-			let Some(item) = provider
-				.database
-				.get_typed_entry::<Item>(item_id.unversioned(), provider.system_depot.clone(), None)
-				.await?
-			else {
+			let Some(item) = provider.get_typed_entry::<Item>(item_id.unversioned(), None).await? else {
 				log::error!(target: "inventory", "failed to find item {:?}", item_id.to_string());
 				continue;
 			};
@@ -228,11 +224,7 @@ impl<T: AsItem> ItemContainer<T> {
 			if let Some(container) = &mut entry.as_item_mut().spells {
 				for entry in &mut container.spells {
 					if let Indirect::Id(spell_id) = &entry.spell {
-						let Some(spell) = provider
-							.database
-							.get_typed_entry::<Spell>(spell_id.unversioned(), provider.system_depot.clone(), None)
-							.await?
-						else {
+						let Some(spell) = provider.get_typed_entry::<Spell>(spell_id.unversioned(), None).await? else {
 							log::error!(target: "inventory", "failed to find spell {:?}", spell_id.to_string());
 							continue;
 						};

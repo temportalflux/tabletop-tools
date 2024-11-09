@@ -87,7 +87,12 @@ impl ItemLocation {
 		}
 	}
 
-	pub fn resolve_mut<'c, T, F>(&'c self, state: &'c CharacterHandle, mutator: F) -> Option<Callback<T, ()>> where F: Fn(T, &mut Item) -> MutatorImpact, T: 'static, F: 'static {
+	pub fn resolve_mut<'c, T, F>(&'c self, state: &'c CharacterHandle, mutator: F) -> Option<Callback<T, ()>>
+	where
+		F: Fn(T, &mut Item) -> MutatorImpact,
+		T: 'static,
+		F: 'static,
+	{
 		match self {
 			Self::Inventory { id_path } => {
 				let id_path = id_path.clone();
@@ -132,7 +137,12 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 		None | Some(ItemLocation::Database { .. }) => None,
 	};
 
-	fn mutate_item<T: 'static, F>(location: &Option<ItemLocation>, state: &CharacterHandle, mutator: F) -> Option<Callback<T, ()>> where F: Fn(T, &mut Item) -> MutatorImpact + 'static {
+	fn mutate_item<T: 'static, F>(
+		location: &Option<ItemLocation>, state: &CharacterHandle, mutator: F,
+	) -> Option<Callback<T, ()>>
+	where
+		F: Fn(T, &mut Item) -> MutatorImpact + 'static,
+	{
 		location.as_ref().map(|location| location.resolve_mut(state, mutator)).flatten()
 	}
 
@@ -660,23 +670,22 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 		});
 		iter.collect::<Vec<_>>()
 	};
-	let toggle_user_tag = (!available_tags.is_empty()).then(|| {
-		mutate_item(&props.location, &state, |data, item| {
-			let Some(tag) = data else { return MutatorImpact::None };
-			let is_applied = item.user_tags.contains(&tag);
-			if is_applied {
-				item.user_tags.retain(|item| item != &tag);
-			}
-			else {
-				item.user_tags.push(tag);
-			}
-			MutatorImpact::Recompile
+	let toggle_user_tag = (!available_tags.is_empty())
+		.then(|| {
+			mutate_item(&props.location, &state, |data, item| {
+				let Some(tag) = data else { return MutatorImpact::None };
+				let is_applied = item.user_tags.contains(&tag);
+				if is_applied {
+					item.user_tags.retain(|item| item != &tag);
+				} else {
+					item.user_tags.push(tag);
+				}
+				MutatorImpact::Recompile
+			})
 		})
-	}).flatten();
+		.flatten();
 	let add_tag_button = toggle_user_tag.map(|toggle_user_tag| {
-		let onchange = toggle_user_tag.reform({
-			move |evt: web_sys::Event| evt.select_value()
-		});
+		let onchange = toggle_user_tag.reform(move |evt: web_sys::Event| evt.select_value());
 		html!(<select class="form-select form-select-sm w-auto" {onchange}>
 			<option selected=true>{"Select Tag(s)"}</option>
 			{available_tags.into_iter().map(|(tag, is_applied, has_available_usages)| {

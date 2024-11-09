@@ -48,10 +48,7 @@ impl AdditionalObjectCache {
 	}
 
 	pub fn take_cached_objects(&mut self) -> Self {
-		Self {
-			object_cache: self.object_cache.drain().collect(),
-			..Default::default()
-		}
+		Self { object_cache: self.object_cache.drain().collect(), ..Default::default() }
 	}
 
 	pub async fn update_objects(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
@@ -67,20 +64,14 @@ impl AdditionalObjectCache {
 				}
 				log::info!(target: "object-cache", "Querying database for object {object_id}");
 				if object_type_id == Bundle::id() {
-					let bundle = provider
-						.database
-						.get_typed_entry::<Bundle>(object_id.clone(), provider.system_depot.clone(), None)
-						.await?;
+					let bundle = provider.get_typed_entry::<Bundle>(object_id.clone(), None).await?;
 					let Some(bundle) = bundle else {
 						log::error!(target: "object_cache", "Failed to find bundle {:?}, no such entry in database.", object_id.to_string());
 						continue;
 					};
 					self.object_cache.insert(object_id.clone(), CachedObject::Bundle(bundle));
 				} else if object_type_id == Subclass::id() {
-					let subclass = provider
-						.database
-						.get_typed_entry::<Subclass>(object_id.clone(), provider.system_depot.clone(), None)
-						.await?;
+					let subclass = provider.get_typed_entry::<Subclass>(object_id.clone(), None).await?;
 					let Some(subclass) = subclass else {
 						log::error!(target: "object_cache", "Failed to find subclass {:?}, no such entry in database.", object_id.to_string());
 						continue;

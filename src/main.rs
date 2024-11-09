@@ -1,5 +1,6 @@
 use integro_tabletop::*;
 use std::sync::Arc;
+use system::dnd5e::data::character::ObjectCacheArc;
 use yew::prelude::*;
 
 #[cfg(target_family = "wasm")]
@@ -30,15 +31,17 @@ fn ProviderChain(props: &html::ChildrenProps) -> Html {
 				<task::Provider>
 					<system::Provider>
 						<DatabaseProvider>
-							<storage::autosync::Provider>
-								<object_browser::Provider>
-									<crate::components::modal::Provider>
-										<crate::components::context_menu::Provider>
-											{props.children.clone()}
-										</crate::components::context_menu::Provider>
-									</crate::components::modal::Provider>
-								</object_browser::Provider>
-							</storage::autosync::Provider>
+							<ObjectCacheArcProvider>
+								<storage::autosync::Provider>
+									<object_browser::Provider>
+										<crate::components::modal::Provider>
+											<crate::components::context_menu::Provider>
+												{props.children.clone()}
+											</crate::components::context_menu::Provider>
+										</crate::components::modal::Provider>
+									</object_browser::Provider>
+								</storage::autosync::Provider>
+							</ObjectCacheArcProvider>
 						</DatabaseProvider>
 					</system::Provider>
 				</task::Provider>
@@ -76,5 +79,15 @@ fn DatabaseProvider(props: &html::ChildrenProps) -> Html {
 		<ContextProvider<Database> context={ddb.clone()}>
 			{props.children.clone()}
 		</ContextProvider<Database>>
+	}
+}
+
+#[function_component]
+pub fn ObjectCacheArcProvider(props: &html::ChildrenProps) -> Html {
+	let cache = use_state(|| ObjectCacheArc::default());
+	html! {
+		<ContextProvider<ObjectCacheArc> context={(*cache).clone()}>
+			{props.children.clone()}
+		</ContextProvider<ObjectCacheArc>>
 	}
 }

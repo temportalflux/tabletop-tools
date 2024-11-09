@@ -1,5 +1,5 @@
-use multimap::MultiMap;
 use crate::system::{dnd5e::generator::item, mutator::ReferencePath};
+use multimap::MultiMap;
 
 // Tags granted by mutators that can be assigned by users to specific objects, such as items in the inventory.
 #[derive(Clone, Default, PartialEq, Debug)]

@@ -2,7 +2,7 @@ use crate::{
 	database::{entry::EntryInSystemWithType, Database, FetchError, Query},
 	system::{
 		self,
-		dnd5e::data::character::{Character, DefaultsBlock, ObjectCacheProvider, Persistent},
+		dnd5e::data::character::{Character, DefaultsBlock, ObjectCacheArc, ObjectCacheProvider, Persistent},
 		SourceId,
 	},
 	task,
@@ -17,12 +17,12 @@ use yew::prelude::*;
 pub fn use_character(id: SourceId) -> CharacterHandle {
 	let database = use_context::<Database>().unwrap();
 	let system_depot = use_context::<system::Registry>().unwrap();
+	let object_cache = use_context::<ObjectCacheArc>().unwrap();
 	let task_dispatch = use_context::<task::Dispatch>().unwrap();
 
 	let state = use_state(|| CharacterState::default());
 	let handle = CharacterHandle {
-		database,
-		system_depot,
+		object_cache: ObjectCacheProvider::new(&database, &system_depot, &object_cache),
 		task_dispatch,
 		state,
 		is_recompiling: Rc::new(AtomicBool::new(false)),
@@ -57,8 +57,7 @@ enum CharacterInitializationError {
 
 #[derive(Clone)]
 pub struct CharacterHandle {
-	database: Database,
-	system_depot: system::Registry,
+	object_cache: ObjectCacheProvider,
 	task_dispatch: task::Dispatch,
 	state: UseStateHandle<CharacterState>,
 	is_recompiling: Rc<AtomicBool>,
@@ -107,10 +106,7 @@ impl CharacterHandle {
 				let id_str = id.to_string();
 				log::info!(target: "character", "Initializing from {:?}", id_str);
 
-				let entry = handle
-					.database
-					.get_typed_entry::<Persistent>(id.clone(), handle.system_depot.clone(), None)
-					.await?;
+				let entry = handle.object_cache.get_typed_entry::<Persistent>(id.clone(), None).await?;
 				let persistent = match entry {
 					Some(known) => known,
 					None if !id.has_path() => Persistent { id: id.clone(), ..Default::default() },
@@ -120,18 +116,16 @@ impl CharacterHandle {
 				};
 
 				let index = EntryInSystemWithType::new::<DefaultsBlock>(system);
-				let query = Query::<crate::database::Entry>::subset(&handle.database, Some(index)).await;
+				let query = Query::<crate::database::Entry>::subset(&handle.object_cache.database, Some(index)).await;
 				let query = query.map_err(|err| CharacterInitializationError::DefaultsError(format!("{err:?}")))?;
-				let query = query.parse_as::<DefaultsBlock>(&handle.system_depot);
+				let query = query.parse_as_cached::<DefaultsBlock>(
+					&handle.object_cache.system_depot, &handle.object_cache.object_cache,
+				);
 				let query = query.map(|(_, block)| block);
 				let default_blocks = query.collect::<Vec<_>>().await;
 
 				let mut character = Character::new(persistent, default_blocks);
-				let provider = ObjectCacheProvider {
-					database: handle.database.clone(),
-					system_depot: handle.system_depot.clone(),
-				};
-				if let Err(err) = character.recompile(provider).await {
+				if let Err(err) = character.recompile(&handle.object_cache).await {
 					log::warn!(target: "character", "Encountered error updating cached character objects: {err:?}");
 				}
 				log::info!(target: "character", "Finished loading {:?}", id_str);
@@ -207,9 +201,7 @@ impl CharacterHandle {
 		self.set_recompiling(true);
 		character.clear_derived();
 		let signal = self.task_dispatch.spawn("Recompile Character", None, async move {
-			let provider =
-				ObjectCacheProvider { database: handle.database.clone(), system_depot: handle.system_depot.clone() };
-			if let Err(err) = character.recompile(provider).await {
+			if let Err(err) = character.recompile(&handle.object_cache).await {
 				log::warn!("Encountered error updating cached character objects: {err:?}");
 			}
 			handle.state.set(CharacterState::Loaded(character));

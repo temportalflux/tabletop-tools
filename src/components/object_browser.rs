@@ -6,7 +6,7 @@ use crate::{
 		self,
 		dnd5e::{
 			components::GeneralProp,
-			data::{character::spellcasting::AbilityOrStat, Bundle},
+			data::{character::{spellcasting::AbilityOrStat, ObjectCacheArc}, Bundle},
 			DnD5e,
 		},
 		System,
@@ -166,13 +166,15 @@ struct BundleListProps {
 fn BundleList(props: &BundleListProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let system_depot = use_context::<system::Registry>().unwrap();
+	let object_cache = use_context::<ObjectCacheArc>().unwrap();
 	let fetch_bundles = use_query(Some(props.criteria.clone()), move |database, criteria| {
 		let system_depot = system_depot.clone();
+		let object_cache = object_cache.clone();
 		async move {
 			let index = EntryInSystemWithType::new::<Bundle>(DnD5e::id());
 			let query = Query::subset(&database, Some(index)).await?;
 			let query = query.apply_opt(criteria, Query::filter_by);
-			let query = query.parse_as::<Bundle>(&system_depot);
+			let query = query.parse_as_cached::<Bundle>(&system_depot, &object_cache);
 			let query = query.map(|(_entry, bundle)| bundle);
 			let mut bundles = query.collect::<Vec<_>>().await;
 			bundles.sort_by(|a, b| a.name.cmp(&b.name));

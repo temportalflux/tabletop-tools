@@ -4,9 +4,10 @@ use crate::{
 		dnd5e::{
 			data::{
 				character::{
-					spellcasting, AbilityScores, AttackBonuses, DefaultsBlock, Defenses, Derived, DerivedDescription,
-					Features, HitDice, HitPoint, HitPoints, Initiative, MaxHitPoints, Persistent, ResourceDepot,
-					RestResets, SavingThrows, Skills, Spellcasting, StartingEquipment, Stat,
+					spellcasting, AbilityScores, AdditionalObjectCache, AttackBonuses, DefaultsBlock, Defenses,
+					Derived, DerivedDescription, Features, HitDice, HitPoint, HitPoints, Initiative, MaxHitPoints,
+					ObjectCacheProvider, Persistent, ResourceDepot, RestResets, SavingThrows, SelectedSpells, Skills,
+					Spellcasting, StartingEquipment, Stat, UserTags,
 				},
 				item::container::Inventory,
 				proficiency, Ability, ArmorClass, Feature, OtherProficiencies,
@@ -24,8 +25,6 @@ use std::{
 	path::{Path, PathBuf},
 	str::FromStr,
 };
-
-use super::{AdditionalObjectCache, SelectedSpells, UserTags};
 
 #[derive(Clone, PartialEq)]
 pub enum ActionEffect {
@@ -70,8 +69,12 @@ impl From<Persistent> for Character {
 impl Character {
 	pub fn new(persistent: Persistent, default_blocks: Vec<DefaultsBlock>) -> Self {
 		Self {
-			default_blocks, character: persistent,
-			derived: Derived::default(), mutators: Vec::new(), additional_objects: Default::default(), }
+			default_blocks,
+			character: persistent,
+			derived: Derived::default(),
+			mutators: Vec::new(),
+			additional_objects: Default::default(),
+		}
 	}
 
 	pub fn clear_derived(&mut self) {
@@ -100,7 +103,7 @@ impl Character {
 
 	// TODO: Decouple database+system_depot from dnd data - there can be an abstraction/trait
 	// which specifies the minimal API for getting a cached object from a database of content
-	pub async fn recompile(&mut self, provider: ObjectCacheProvider) -> anyhow::Result<()> {
+	pub async fn recompile(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
 		self.initiaize_recompile();
 		self.insert_mutators();
 
@@ -519,11 +522,4 @@ impl Character {
 	pub fn user_tags_mut(&mut self) -> &mut UserTags {
 		&mut self.derived.user_tags
 	}
-}
-
-pub struct ObjectCacheProvider {
-	// TODO: Decouple database+system_depot from dnd data - there can be an abstraction/trait
-	// which specifies the minimal API for getting a cached object from a database of content
-	pub database: crate::database::Database,
-	pub system_depot: crate::system::Registry,
 }

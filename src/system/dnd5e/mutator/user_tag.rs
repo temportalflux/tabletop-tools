@@ -1,12 +1,18 @@
-use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
-		dnd5e::{data::{character::{Character, UserTag}, description}, generator::item},
+		dnd5e::{
+			data::{
+				character::{Character, UserTag},
+				description,
+			},
+			generator::item,
+		},
 		mutator::ReferencePath,
 		Mutator,
 	},
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddUserTag {

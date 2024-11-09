@@ -8,3 +8,5 @@ mod character;
 pub use character::*;
 mod hit_point;
 pub use hit_point::*;
+mod object_cache;
+pub use object_cache::*;

@@ -1,4 +1,5 @@
 use super::{entry::Entry, Database};
+use crate::system::dnd5e::data::character::ObjectCacheArc;
 use database::{IndexType, Record};
 use futures::{stream::LocalBoxStream, Future, StreamExt};
 
@@ -138,5 +139,33 @@ impl Query<Entry> {
 				})
 				.boxed_local(),
 		)
+	}
+
+	pub fn parse_as_cached<BlockType>(
+		self, registry: &crate::system::Registry, cache: &ObjectCacheArc,
+	) -> Query<(Entry, BlockType)>
+	where
+		BlockType: crate::system::Block + Clone + 'static,
+	{
+		let registry = registry.clone();
+		let cache = cache.clone();
+		let stream = self.0.filter_map(move |entry| {
+			let registry = registry.clone();
+			let cache = cache.clone();
+			async move {
+				let entry_id = entry.source_id(true);
+				let mut mutable_cache = cache.writable_cache();
+				match mutable_cache.get::<BlockType>(&entry_id) {
+					Some(block) => Some((entry, block.clone())),
+					None => {
+						let generics = registry.get(&entry.system).map(|reg| reg.node());
+						let block = entry.parse_kdl::<BlockType>(generics?)?;
+						mutable_cache.insert(entry_id, block.clone());
+						Some((entry, block))
+					}
+				}
+			}
+		});
+		Query(stream.boxed_local())
 	}
 }
