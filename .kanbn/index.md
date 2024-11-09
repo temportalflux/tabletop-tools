@@ -61,10 +61,9 @@ columnSorting:
 
 ## In Progress
 
-- [add-a-spell-object-cache-for-character-sheets](tasks/add-a-spell-object-cache-for-character-sheets.md)
-
 ## Done
 
+- [add-a-spell-object-cache-for-character-sheets](tasks/add-a-spell-object-cache-for-character-sheets.md)
 - [pact-weapon-identifier-query](tasks/pact-weapon-identifier-query.md)
 - [hobgoblin-reserves-of-strength](tasks/hobgoblin-reserves-of-strength.md)
 - [spells-support-healing](tasks/spells-support-healing.md)

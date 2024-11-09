@@ -1,11 +1,12 @@
 ---
 created: 2024-11-08T21:31:07.037Z
-updated: 2024-11-08T21:31:55.227Z
+updated: 2024-11-09T15:16:00.021Z
 assigned: ""
 progress: 0
 tags:
   - App
 started: 2024-11-08T21:31:55.227Z
+completed: 2024-11-09T15:16:00.021Z
 ---
 
 # Add a spell object cache for character sheets
