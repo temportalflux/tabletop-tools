@@ -48,21 +48,22 @@ columnSorting:
 
 ## Todo List
 
+- [mutator-to-disable-action-budget](tasks/mutator-to-disable-action-budget.md)
 - [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
 - [display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel](tasks/display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel.md)
 - [wizard-spell-mastery](tasks/wizard-spell-mastery.md)
 - [beserker-barbarian-frenzy](tasks/beserker-barbarian-frenzy.md)
 - [open-hand-monk-tranquility](tasks/open-hand-monk-tranquility.md)
 - [devotion-paladin-purity-of-spirit](tasks/devotion-paladin-purity-of-spirit.md)
-- [mutator-to-grant-uses-on-rest](tasks/mutator-to-grant-uses-on-rest.md)
 - [spellcasting-limited-by-both-slot-and-uses-at-the-same-time](tasks/spellcasting-limited-by-both-slot-and-uses-at-the-same-time.md)
-- [mutator-to-disable-action-budget](tasks/mutator-to-disable-action-budget.md)
-- [item-user-tag-mutations-are-really-slow](tasks/item-user-tag-mutations-are-really-slow.md)
 
 ## In Progress
 
+- [mutator-to-grant-uses-on-rest](tasks/mutator-to-grant-uses-on-rest.md)
+
 ## Done
 
+- [item-user-tag-mutations-are-really-slow](tasks/item-user-tag-mutations-are-really-slow.md)
 - [add-a-spell-object-cache-for-character-sheets](tasks/add-a-spell-object-cache-for-character-sheets.md)
 - [pact-weapon-identifier-query](tasks/pact-weapon-identifier-query.md)
 - [hobgoblin-reserves-of-strength](tasks/hobgoblin-reserves-of-strength.md)

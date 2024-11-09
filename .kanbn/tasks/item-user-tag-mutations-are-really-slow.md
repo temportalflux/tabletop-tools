@@ -1,10 +1,11 @@
 ---
 created: 2024-11-02T16:10:26.066Z
-updated: 2024-11-02T16:10:26.064Z
+updated: 2024-11-09T15:17:15.838Z
 assigned: ""
 progress: 0
 tags:
   - Bug
+completed: 2024-11-09T15:17:15.838Z
 ---
 
 # Item User-Tag mutations are really slow

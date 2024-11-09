@@ -43,6 +43,9 @@ pub use proficient::*;
 mod pick_n;
 pub use pick_n::*;
 
+mod rest;
+pub use rest::*;
+
 mod sense;
 pub use sense::*;
 
