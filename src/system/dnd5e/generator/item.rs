@@ -188,8 +188,8 @@ mod test {
 				|generator \"item\" \"test-gen\" {
 				|    source \"local://homebrew@dnd5e/items/generator.kdl\"
 				|    filter {
-				|        armor \"Medium\" \"Heavy\"
 				|        rarity \"None\" \"Common\"
+				|        armor \"Medium\" \"Heavy\"
 				|    }
 				|    variant \"vari1\" {
 				|        extend \"name\" \"{name} Armor of Magic Resistance\"

@@ -11,8 +11,9 @@ pub struct ResourceDepot {
 
 impl ResourceDepot {
 	pub fn register(&mut self, resource: &Resource) {
+		//log::debug!(target: "resource", "register {resource:?} @ {:?}", resource.get_uses_path());
 		let Some(path) = resource.get_uses_path() else {
-			return;
+			return
 		};
 		self.uses.insert(path, resource.clone());
 	}

@@ -35,6 +35,11 @@ impl From<&str> for IdPath {
 		Self::from(Some(value))
 	}
 }
+impl From<String> for IdPath {
+	fn from(value: String) -> Self {
+		Self::from(Some(value))
+	}
+}
 impl IdPath {
 	pub fn get_id(&self) -> Option<Cow<'_, String>> {
 		match (self.is_absolute, &self.id) {

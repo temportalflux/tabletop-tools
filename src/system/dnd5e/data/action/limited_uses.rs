@@ -107,7 +107,14 @@ impl FromKdl<NodeContext> for LimitedUses {
 		}
 
 		if let Some(mut node_resource) = node.query_opt("scope() > resource")? {
-			let resource = IdPath::from(node_resource.next_str_req()?);
+			let resource = {
+				let path_str = node_resource.next_str_req()?;
+				let path_str = match path_str.ends_with("/uses") {
+					false => path_str.to_owned() + "/uses",
+					true => path_str.to_owned(),
+				};
+				IdPath::from(path_str)
+			};
 			let cost = match node.query_opt("scope() > cost")? {
 				None => 1,
 				Some(mut node) => node.next_i64_req()? as u32,
@@ -131,8 +138,14 @@ impl AsKdl for LimitedUses {
 				node
 			}
 			Self::Consumer { resource, cost } => {
-				let resource = resource.get_id().map(std::borrow::Cow::into_owned).unwrap_or_default();
-				node.child(("resource", resource));
+				let resource_path = match resource.get_id() {
+					None => String::default(),
+					Some(cow_str) => match cow_str.strip_suffix("/uses") {
+						None => cow_str.into_owned(),
+						Some(str) => str.to_owned(),
+					},
+				};
+				node.child(("resource", resource_path));
 				if *cost > 1 {
 					node.child(("cost", cost));
 				}

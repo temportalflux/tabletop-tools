@@ -70,7 +70,7 @@ impl FromKdl<NodeContext> for RestEffect {
 		match node.next_str_req()? {
 			"GrantUses" => {
 				let amount = node.query_i64_req("scope() > amount", 0)? as u32;
-				let resource = IdPath::from(node.query_str_req("scope() > resource", 0)?);
+				let resource = IdPath::from(node.query_str_req("scope() > resource", 0)?.to_owned() + "/uses");
 				Ok(Self::GrantUses { amount, resource })
 			}
 			name => Err(NotInList(name.to_owned(), vec!["GrantUses"]).into()),

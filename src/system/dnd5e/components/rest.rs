@@ -98,20 +98,22 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 					Some(roll) => Some(roll.roll(&mut rng)),
 				};
 
-				let path_str = entry.source.display().to_string();
-				let path_str = path_str.replace("\\", "/");
-				match &uses_to_remove {
-					None => changes.push(format!("Restored all uses to {path_str}.")),
-					Some(gained_uses) => changes.push(format!("Restored {gained_uses} uses to {path_str}.")),
-				}
 				for data_path in &entry.data_paths {
+					let path_str = data_path.display().to_string();
+					let path_str = path_str.replace("\\", "/");
+					
 					let new_value = match &uses_to_remove {
-						None => None,
+						None => {
+							changes.push(format!("Restored all uses to {path_str}."));
+							None
+						}
 						Some(gained_uses) => {
+							changes.push(format!("Restored {gained_uses} uses to {path_str}."));
+
 							// Remove the amt of gained uses from the "uses" resource
 							let prev_value = persistent.get_first_selection_at::<u32>(data_path);
 							let prev_value = prev_value.map(Result::ok).flatten().unwrap_or(0);
-							let new_value = prev_value.saturating_add_signed(*gained_uses);
+							let new_value = prev_value.saturating_add_signed(-*gained_uses);
 							(new_value > 0).then(|| new_value.to_string())
 						}
 					};
@@ -410,9 +412,27 @@ fn ProjectedRestorations(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 				None => "all".to_owned(),
 				Some(roll_set) => roll_set.to_string(),
 			};
-			let path_str = crate::data::as_feature_path_text(&entry.source).unwrap_or_default();
-			let description = format!("Restore {amt} uses of {path_str}.");
-			sections.push(html!(<li>{description}</li>));
+			let source_str = crate::data::as_feature_path_text(&entry.source).unwrap_or_default();
+			for data_path in &entry.data_paths {
+				let adjusted_path = match (data_path.ends_with("uses"), data_path.parent()) {
+					(true, Some(without_uses)) => without_uses,
+					(false, _) | (true, None) => data_path.as_ref(),
+				};
+				match &entry.source == data_path {
+					true => {
+						sections.push(html!(<li>
+							{"Restore "}{&amt}{" uses of "}{&source_str}{"."}
+						</li>));
+					}
+					false => {
+						let data_str = crate::data::as_feature_path_text(adjusted_path).unwrap_or_default();
+						sections.push(html!(<li>
+							{"Restore "}{&amt}{" uses of "}{&data_str}{"."}
+							{" (via "}{&source_str}{")"}
+						</li>));
+					}
+				}
+			}
 		}
 	}
 	html! {
