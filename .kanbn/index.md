@@ -59,10 +59,9 @@ columnSorting:
 
 ## In Progress
 
-- [mutator-to-grant-uses-on-rest](tasks/mutator-to-grant-uses-on-rest.md)
-
 ## Done
 
+- [mutator-to-grant-uses-on-rest](tasks/mutator-to-grant-uses-on-rest.md)
 - [item-user-tag-mutations-are-really-slow](tasks/item-user-tag-mutations-are-really-slow.md)
 - [add-a-spell-object-cache-for-character-sheets](tasks/add-a-spell-object-cache-for-character-sheets.md)
 - [pact-weapon-identifier-query](tasks/pact-weapon-identifier-query.md)
