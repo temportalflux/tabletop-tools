@@ -130,6 +130,8 @@ async fn process_request(
 	let mut modules_to_uninstall = BTreeSet::new();
 	// list of systems where content has been added to, updated, or removed from.
 	let mut systems_changed = BTreeSet::new();
+
+	status.push_stage("Finding installed modules", None);
 	match req {
 		Request::FetchLatestVersionAllModules => {
 			scan_storage_for_modules = true;
@@ -176,6 +178,7 @@ async fn process_request(
 			}
 		}
 	}
+	status.pop_stage();
 
 	status.push_stage("Checking authentiation", None);
 	let (viewer, repo_owners) = {
@@ -205,29 +208,27 @@ async fn process_request(
 
 	// Scan storage or check for updates
 	let mut remote_repositories = BTreeMap::new();
+	status.push_stage("Looking for remote modules", None);
 	if scan_storage_for_modules {
-		status.push_stage("Scanning Storage", None);
 		let scan_for_modules = ScanForModules { client: storage.clone(), owners: repo_owners };
 		let repositories = scan_for_modules.run().await?;
 		for repository in repositories {
 			remote_repositories.insert((&repository).into(), repository);
 		}
-		status.pop_stage();
 	} else {
-		status.push_stage("Checking for module updates", None);
 		let module_names = modules_to_fetch.iter().map(ModuleId::to_string).collect();
 		let mut find_modules = FindModules { status: status.clone(), client: storage.clone(), names: module_names };
 		let repositories = find_modules.run().await?;
 		for repository in repositories {
 			remote_repositories.insert((&repository).into(), repository);
 		}
-		status.pop_stage();
 	}
+	status.pop_stage();
 
 	// Update module versions or add modules
 	if !remote_repositories.is_empty() {
 		use database::{ObjectStoreExt, TransactionExt};
-		status.push_stage("Updating database", None);
+		status.push_stage("Caching remote module versions", None);
 
 		let transaction = database.write()?;
 		let module_store = transaction.object_store_of::<Module>()?;
@@ -286,12 +287,14 @@ async fn process_request(
 	// This deletes all content from those modules, including variants of content in the modules
 	// (variants are created by generators using some basis, and thus considered a part of the original module).
 	if !modules_to_uninstall.is_empty() {
+		status.push_stage("Uninstalling modules", Some(modules_to_uninstall.len()));
 		let transaction = database.write()?;
 		for module_id in &modules_to_uninstall {
 			use crate::database::entry::ModuleSystem;
 			use database::{ObjectStoreExt, TransactionExt};
 
 			let Some(module) = modules.get_mut(module_id) else {
+				status.increment_progress();
 				continue;
 			};
 
@@ -315,8 +318,11 @@ async fn process_request(
 					systems_changed.insert(system.clone());
 				}
 			}
+			
+			status.increment_progress();
 		}
 		transaction.commit().await.map_err(database::Error::from)?;
+		status.pop_stage();
 	}
 
 	// Install desired modules
