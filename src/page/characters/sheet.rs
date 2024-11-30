@@ -4,7 +4,6 @@ use crate::{
 		mobile, Spinner,
 	},
 	database::{module::ModuleInSystem, Module, Query},
-	page::app::AutosyncStatusDisplay,
 	storage::autosync,
 	system::{
 		dnd5e::{components::GeneralProp, DnD5e},
@@ -82,6 +81,7 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 		let autosync_channel = autosync_channel.clone();
 		move |vis| {
 			if vis == web_sys::VisibilityState::Visible && character.is_loaded() {
+				// TODO: This should not use autosync, instead there should be a separate request channel for handling per-character storage requests.
 				autosync_channel.try_send_req(autosync::Request::UpdateFile(character.id().clone()));
 			}
 		}
@@ -147,7 +147,6 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 
 #[function_component]
 pub fn SheetSidebar() -> Html {
-	let autosync_status = use_context::<autosync::Status>().unwrap();
 	// TODO: maybe use some variant of OffCanvas Vertical NavBar to group both app nav and character nav into the same left-vertical sidebar
 	// https://getbootstrap.com/docs/5.3/components/navbar/#offcanvas
 	// Or the sidebar is just for in-character mode where the character's name and details + sync status are in the side bar,
@@ -158,7 +157,7 @@ pub fn SheetSidebar() -> Html {
 		<div class="sheet-sidebar d-flex flex-row">
 			<div class="content collapse collapse-horizontal" id="sidebar-collapse">
 				<div class="content d-flex flex-column">
-					{autosync_status.is_active().then_some(html!(<AutosyncStatusDisplay value={autosync_status} />))}
+					
 				</div>
 			</div>
 			<i

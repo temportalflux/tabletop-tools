@@ -5,49 +5,60 @@ use yew_router::prelude::*;
 #[function_component]
 pub fn App() -> Html {
 	let autosync_channel = use_context::<autosync::Channel>().unwrap();
+	let autosync_status = use_context::<autosync::Status>().unwrap();
 	auth::use_on_auth_success(move |_auth_status| {
 		autosync_channel.try_send_req(autosync::Request::FetchLatestVersionAllModules);
 	});
 
+	let display_route = autosync_status.is_active().then_some("d-none");
+	let autosync_takeover = autosync_status.is_active().then(|| html!(<AutosyncStatusDisplay value={autosync_status} />));
+
 	html! {
 		<BrowserRouter>
 			<Header />
-			<Switch<Route> render={Route::switch} />
+			{autosync_takeover}
+			<div class={classes!(display_route)}>
+				<Switch<Route> render={Route::switch} />
+			</div>
 		</BrowserRouter>
 	}
 }
 
 #[derive(Clone, PartialEq, Properties)]
-pub struct AutosyncStatusProps {
+struct AutosyncStatusProps {
 	pub value: autosync::Status,
 }
 #[function_component]
-pub fn AutosyncStatusDisplay(AutosyncStatusProps { value }: &AutosyncStatusProps) -> Html {
+fn AutosyncStatusDisplay(AutosyncStatusProps { value }: &AutosyncStatusProps) -> Html {
 	html! {
-		<div class="sync-status d-flex flex-column justify-content-start align-items-center">
-			{value.stages().iter().enumerate().map(|(idx, stage)| {
-				html! {
-					<div class="stage w-100 d-flex flex-column">
-						<div class="d-flex justify-content-start align-items-center">
-							{(idx == 0).then_some(html!(<div class="spinner-border me-2" role="status" />))}
-							<div class="title">{&stage.title}</div>
+		<div class="sync-status d-flex justify-content-center align-items-center">
+			<div class="d-flex flex-column align-items-center" style="width: 1000px;">
+				{value.stages().iter().enumerate().map(|(idx, stage)| {
+					html! {
+						<div class="w-100 my-2">
+							<div class="d-flex align-items-center">
+								{stage.progress.is_none().then(|| {
+									html!(<div class="spinner-border me-2" role="status" />)
+								})}
+								<div class={format!("h{}", idx+1)}>{&stage.title}</div>
+							</div>
+							{stage.progress.as_ref().map(|status| {
+								let progress = (status.progress as f64 / status.max as f64) * 100f64;
+								html! {
+									<div>
+										<div class="progress" role="progressbar">
+											<div class="progress-bar bg-success" style={format!("width: {progress}%")} />
+										</div>
+										<div class="progress-label-float">
+											{status.progress} {"/"} {status.max}
+										</div>
+									</div>
+								}
+							})}
 						</div>
-						{stage.progress.as_ref().map(|status| {
-							let progress = (status.progress as f64 / status.max as f64) * 100f64;
-							html! {
-								<div>
-									<div class="progress" role="progressbar">
-										<div class="progress-bar bg-success" style={format!("width: {progress}%")} />
-									</div>
-									<div class="progress-label-float">
-										{status.progress} {"/"} {status.max}
-									</div>
-								</div>
-							}
-						})}
-					</div>
-				}
-			}).collect::<Vec<_>>()}
+					}
+				}).collect::<Vec<_>>()}
+			</div>
 		</div>
 	}
 }
