@@ -12,9 +12,7 @@ fn main() {
 		use tracing_subscriber::layer::SubscriberExt;
 		let layer = tracing_subscriber::Registry::default();
 		let layer = layer.with(tracing_wasm::WASMLayer::new(tracing_wasm::WASMLayerConfig::default()));
-		let layer = layer.with(tracing_subscriber::filter::filter_fn(|metadata| {
-			!metadata.target().starts_with("yew")
-		}));
+		let layer = layer.with(tracing_subscriber::filter::filter_fn(|metadata| !metadata.target().starts_with("yew")));
 		layer
 	});
 	yew::Renderer::<App>::new().render();

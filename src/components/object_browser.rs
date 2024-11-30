@@ -6,7 +6,10 @@ use crate::{
 		self,
 		dnd5e::{
 			components::GeneralProp,
-			data::{character::{spellcasting::AbilityOrStat, ObjectCacheArc}, Bundle},
+			data::{
+				character::{spellcasting::AbilityOrStat, ObjectCacheArc},
+				Bundle,
+			},
 			DnD5e,
 		},
 		System,

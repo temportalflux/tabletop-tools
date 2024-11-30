@@ -101,7 +101,7 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 				for data_path in &entry.data_paths {
 					let path_str = data_path.display().to_string();
 					let path_str = path_str.replace("\\", "/");
-					
+
 					let new_value = match &uses_to_remove {
 						None => {
 							changes.push(format!("Restored all uses to {path_str}."));

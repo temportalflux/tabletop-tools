@@ -1,9 +1,10 @@
 use crate::{
 	components::{
 		database::{self, use_query},
-		mobile, Spinner, ViewScaler,
+		mobile, Spinner,
 	},
 	database::{module::ModuleInSystem, Module, Query},
+	page::app::AutosyncStatusDisplay,
 	storage::autosync,
 	system::{
 		dnd5e::{components::GeneralProp, DnD5e},
@@ -134,13 +135,40 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 	html! {
 		<ContextProvider<CharacterHandle> context={character.clone()}>
 			<div class="w-100 h-100" style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
-				<div class="page-root">
-					<ViewScaler ranges={vec![(1200.0..1400.0).into(), (1400.0..).into()]}>
-						{content}
-					</ViewScaler>
+				<div class="page-root d-flex flex-row">
+					<SheetSidebar />
+					{content}
 				</div>
 				<crate::components::context_menu::ContextMenu />
 			</div>
 		</ContextProvider<CharacterHandle>>
+	}
+}
+
+#[function_component]
+pub fn SheetSidebar() -> Html {
+	let autosync_status = use_context::<autosync::Status>().unwrap();
+	// TODO: maybe use some variant of OffCanvas Vertical NavBar to group both app nav and character nav into the same left-vertical sidebar
+	// https://getbootstrap.com/docs/5.3/components/navbar/#offcanvas
+	// Or the sidebar is just for in-character mode where the character's name and details + sync status are in the side bar,
+	// and the main panel is the character's stats.
+	// TODO: Autosync when installing modules should prevent any changes to modules or character pages.
+	// There should be a fullscreen takeover of the content of those pages until syncing/installing is complete.
+	html! {
+		<div class="sheet-sidebar d-flex flex-row">
+			<div class="content collapse collapse-horizontal" id="sidebar-collapse">
+				<div class="content d-flex flex-column">
+					{autosync_status.is_active().then_some(html!(<AutosyncStatusDisplay value={autosync_status} />))}
+				</div>
+			</div>
+			<i
+				type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-collapse" aria-expanded="false"
+				class="bi bi-chevron-bar-left collapse-toggle close"
+			/>
+			<i
+				type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-collapse" aria-expanded="false"
+				class="bi bi-chevron-bar-right collapse-toggle open"
+			/>
+		</div>
 	}
 }

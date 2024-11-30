@@ -966,3 +966,25 @@ $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
 		color: var(--bs-success);
 	}
 }
+
+.sheet-sidebar {
+	> .collapse-toggle {
+		font-size: 30px;
+	}
+	> .collapse-toggle.open[aria-expanded="true"] {
+		display: none;
+	}
+	> .collapse-toggle.close[aria-expanded="false"] {
+		display: none;
+	}
+	> .content {
+		width: 250px;
+		background-color: var(--bs-tertiary-bg);
+	}
+}
+
+.sync-status > .stage .spinner-border {
+	--bs-spinner-width: 20px;
+  --bs-spinner-height: 20px;
+  --bs-spinner-border-width: 2px;
+}

@@ -119,7 +119,8 @@ impl CharacterHandle {
 				let query = Query::<crate::database::Entry>::subset(&handle.object_cache.database, Some(index)).await;
 				let query = query.map_err(|err| CharacterInitializationError::DefaultsError(format!("{err:?}")))?;
 				let query = query.parse_as_cached::<DefaultsBlock>(
-					&handle.object_cache.system_depot, &handle.object_cache.object_cache,
+					&handle.object_cache.system_depot,
+					&handle.object_cache.object_cache,
 				);
 				let query = query.map(|(_, block)| block);
 				let default_blocks = query.collect::<Vec<_>>().await;

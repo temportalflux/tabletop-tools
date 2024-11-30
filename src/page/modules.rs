@@ -4,6 +4,7 @@ use crate::{
 		stop_propagation, Spinner,
 	},
 	database::{Database, Module, Query},
+	page::app::AutosyncStatusDisplay,
 	storage::autosync,
 	system::ModuleId,
 	task,
@@ -27,6 +28,7 @@ pub fn ModulesLanding() -> Html {
 		}
 		.boxed_local()
 	});
+	let autosync_status = use_context::<autosync::Status>().unwrap();
 
 	let pending_module_installations = use_state_eq(|| HashMap::<ModuleId, bool>::new());
 
@@ -57,6 +59,7 @@ pub fn ModulesLanding() -> Html {
 
 	html! {<>
 		<crate::components::modal::GeneralPurpose />
+		{autosync_status.is_active().then_some(html!(<AutosyncStatusDisplay value={autosync_status} />))}
 		<div class="m-2">
 			<div class="d-flex justify-content-center">
 				<button

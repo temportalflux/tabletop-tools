@@ -28,8 +28,6 @@ columnSorting:
 - [concentration-tracker](tasks/concentration-tracker.md)
 - [eldritch-invocation-book-of-ancient-secrets](tasks/eldritch-invocation-book-of-ancient-secrets.md)
 - [details-drawer-layouts-evaluations](tasks/details-drawer-layouts-evaluations.md)
-- [view-scaler-re-eval](tasks/view-scaler-re-eval.md)
-- [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
 - [dodge-action-applies-a-condition](tasks/dodge-action-applies-a-condition.md)
 - [customizations-breakout-tasks](tasks/customizations-breakout-tasks.md)
 - [performance-instrumentation](tasks/performance-instrumentation.md)
@@ -38,7 +36,6 @@ columnSorting:
 - [updated-module-actions](tasks/updated-module-actions.md)
 - [name-generator](tasks/name-generator.md)
 - [active-tasks-toast](tasks/active-tasks-toast.md)
-- [character-changelog](tasks/character-changelog.md)
 - [spell-components-foci](tasks/spell-components-foci.md)
 - [evaluator-output-types](tasks/evaluator-output-types.md)
 - [purchased-content-validation](tasks/purchased-content-validation.md)
@@ -48,6 +45,7 @@ columnSorting:
 
 ## Todo List
 
+- [character-changelog](tasks/character-changelog.md)
 - [mutator-to-disable-action-budget](tasks/mutator-to-disable-action-budget.md)
 - [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
 - [display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel](tasks/display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel.md)
@@ -59,8 +57,12 @@ columnSorting:
 
 ## In Progress
 
+- [move-autosync-status-to-sidebar-for-events-information](tasks/move-autosync-status-to-sidebar-for-events-information.md)
+
 ## Done
 
+- [view-scaler-re-eval](tasks/view-scaler-re-eval.md)
+- [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
 - [mutator-to-grant-uses-on-rest](tasks/mutator-to-grant-uses-on-rest.md)
 - [item-user-tag-mutations-are-really-slow](tasks/item-user-tag-mutations-are-really-slow.md)
 - [add-a-spell-object-cache-for-character-sheets](tasks/add-a-spell-object-cache-for-character-sheets.md)

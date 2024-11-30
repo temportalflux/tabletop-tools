@@ -116,8 +116,7 @@ fn CategoryBrowser(CategoryBrowserProps { use_lineages: _ }: &CategoryBrowserPro
 					..Default::default()
 				};
 				query_bundles.run(query_args);
-			}
-			else {
+			} else {
 				query_bundles.update(vec![]);
 			}
 		}

@@ -1,14 +1,18 @@
 ---
 created: 2023-09-20T13:51:39.013Z
-updated: 2023-09-20T13:51:39.009Z
+updated: 2024-11-16T17:21:21.774Z
 assigned: ""
 progress: 0
 tags:
-- App
+  - App
 ---
 
 # Character Changelog
 
-Instead of outputting MutatorImpact from CharacterHandle dispatches, output a mutation trait object (something which implements a new Mutation trait). The impl will provide an api for accessing the formatted name of the change (which becomes the commit desc), and a function to mutate a persistent state. If any two adjacent mutations can be merged, they are merged by the changelog (i.e. two hit point mutations with the same "cause").
-Mutations can be read from a commit desc (short desc is user-facing, long desc is kdl data).
-Mutations cannot be automatically reverted, but can be shown in app UI so users can manually make changes which undo a mutation.
+Character sheets no longer use mutation lambdas. Instead, mutating a sheet requires the action to create a discrete mutation structure instance, which is saved to the character sheet. When a sheet is given a new mutation, it performs the mutation locally to update the character sheet. This effectively just introdues a middle-step to sheet changes, but will allow those mutations to be saved to a changelog, viewed, and compared against remote versions of the character for diffing & merging.
+
+The app keeps an in-memory changelog of mutations added since last save. Git commits are saved, w/ the long description interpretted as a kdl document, where each root-node is a kdl-ized mutation.
+
+Users can mutate their characters while the app is checking latest versions and syncing. If the current version of a character in the client is not the exact same as the version in storage, then the app does a diff of these mutations. If the local user has any mutations exactly contained within the remote changes, the user is presented with a diff-merge warning. This popup informs the user of the mutations present in the remote/storage and how they differ from those in memory, noting the dates changes were saved and what the common root of the storage changes and local changes is. Users can choose to take one or the other, or replay their local changes on the remote (rebase).
+
+Changelog is available in the sidebar, and specific changes can be selected to be "revertted" if the mutation supports it. This merely adds a new mutation that undoes the selected mutation.

@@ -1,10 +1,16 @@
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
-		dnd5e::data::{character::{Character, RestEntry}, description, roll::RollSet, Rest},
+		dnd5e::data::{
+			character::{Character, RestEntry},
+			description,
+			roll::RollSet,
+			Rest,
+		},
 		mutator::ReferencePath,
 		Mutator,
-	}, utility::{selector::IdPath, NotInList},
+	},
+	utility::{selector::IdPath, NotInList},
 };
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 
@@ -17,10 +23,7 @@ pub struct ApplyWhenRest {
 
 #[derive(Clone, Debug, PartialEq)]
 enum RestEffect {
-	GrantUses {
-		amount: u32,
-		resource: IdPath,
-	},
+	GrantUses { amount: u32, resource: IdPath },
 }
 
 crate::impl_trait_eq!(ApplyWhenRest);

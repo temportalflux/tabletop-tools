@@ -14,7 +14,8 @@ use crate::{
 			},
 			data::{
 				character::{
-					spellcasting::{AbilityOrStat, CasterKind, CastingMethod, RitualCapability, SpellEntry}, ObjectCacheArc, SpellHealingBonus, MAX_SPELL_RANK
+					spellcasting::{AbilityOrStat, CasterKind, CastingMethod, RitualCapability, SpellEntry},
+					ObjectCacheArc, SpellHealingBonus, MAX_SPELL_RANK,
 				},
 				proficiency,
 				roll::Roll,
