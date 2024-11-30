@@ -1,14 +1,7 @@
 use crate::{
-	components::{
-		database::{self, use_query},
-		mobile, Spinner,
-	},
-	database::{module::ModuleInSystem, Module, Query},
+	components::{mobile, Spinner},
 	storage::autosync,
-	system::{
-		dnd5e::{components::GeneralProp, DnD5e},
-		SourceId,
-	},
+	system::{dnd5e::components::GeneralProp, SourceId},
 };
 use yew::prelude::*;
 
@@ -114,7 +107,7 @@ pub fn SheetSidebar() -> Html {
 		<div class="sheet-sidebar d-flex flex-row">
 			<div class="content collapse collapse-horizontal" id="sidebar-collapse">
 				<div class="content d-flex flex-column">
-					
+
 				</div>
 			</div>
 			<i

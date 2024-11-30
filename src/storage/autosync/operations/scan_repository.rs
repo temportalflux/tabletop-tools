@@ -1,9 +1,12 @@
-use crate::storage::{autosync::ModuleFile, MODULE_TOPIC};
+use crate::storage::{
+	autosync::{status::Status, ModuleFile},
+	MODULE_TOPIC,
+};
 use github::{repos, Error, GithubClient, Query, SearchRepositoriesParams};
 use std::{collections::VecDeque, path::PathBuf};
 
 pub struct ScanRepository {
-	pub status: super::Status,
+	pub status: Status,
 	pub client: GithubClient,
 
 	pub owner: String,

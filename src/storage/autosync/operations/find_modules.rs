@@ -1,8 +1,8 @@
-use crate::storage::MODULE_TOPIC;
+use crate::storage::{autosync::status::Status, MODULE_TOPIC};
 use github::{GithubClient, Query, RepositoryMetadata, SearchRepositoriesParams};
 
 pub struct FindModules {
-	pub status: super::Status,
+	pub status: Status,
 	pub client: GithubClient,
 	pub names: Vec<String>,
 }

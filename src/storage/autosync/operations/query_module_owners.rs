@@ -1,8 +1,9 @@
+use crate::storage::autosync::status::Status;
 use github::{GithubClient, Query};
 
 // Query github for the logged in user and all organizations they have access to.
 pub struct QueryModuleOwners {
-	pub status: super::Status,
+	pub status: Status,
 	pub client: GithubClient,
 	pub user: Option<String>,
 	pub found_homebrew: bool,

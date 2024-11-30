@@ -11,7 +11,9 @@ pub fn App() -> Html {
 	});
 
 	let display_route = autosync_status.is_active().then_some("d-none");
-	let autosync_takeover = autosync_status.is_active().then(|| html!(<AutosyncStatusDisplay value={autosync_status} />));
+	let autosync_takeover = autosync_status.is_active().then(|| {
+		html!(<AutosyncStatusDisplay value={autosync_status} />)
+	});
 
 	html! {
 		<BrowserRouter>

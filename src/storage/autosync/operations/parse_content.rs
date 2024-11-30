@@ -2,7 +2,7 @@ use crate::{
 	data::UserSettings,
 	database::UserSettingsRecord,
 	kdl_ext::{NodeContext, NodeReader},
-	storage::autosync::ModuleFile,
+	storage::autosync::{status::Status, ModuleFile},
 	system::{self, generics, ModuleId, SourceId},
 };
 use anyhow::Context;
@@ -27,7 +27,7 @@ pub struct TooManyEntries(pub String);
 pub struct MissingSystem(pub String);
 
 pub struct ParseFiles {
-	pub status: super::Status,
+	pub status: Status,
 	pub system_depot: system::Registry,
 
 	pub module_id: ModuleId,

@@ -6,60 +6,20 @@ use crate::{
 };
 use anyhow::{Context, Error};
 use database::Transaction;
-use derivative::Derivative;
 use futures::StreamExt;
 use std::{
-	cell::RefCell,
 	collections::{BTreeMap, BTreeSet, HashMap},
-	rc::Rc,
 	sync::Arc,
 };
 use yew::{html::ChildrenProps, prelude::*};
 use yew_hooks::*;
 
-mod download_file_updates;
-use download_file_updates::*;
-mod find_file_updates;
-use find_file_updates::*;
-mod find_modules;
-use find_modules::*;
-mod generate_homebrew;
-use generate_homebrew::*;
-mod parse_content;
-use parse_content::*;
-mod query_module_owners;
-use query_module_owners::*;
-mod scan_for_modules;
-use scan_for_modules::*;
-mod scan_repository;
-use scan_repository::*;
+pub mod channel;
+mod operations;
+pub mod status;
+use operations::*;
 
-#[derive(Clone)]
-pub struct Channel(Rc<RequestChannel>);
-impl PartialEq for Channel {
-	fn eq(&self, other: &Self) -> bool {
-		Rc::ptr_eq(&self.0, &other.0)
-	}
-}
-impl std::ops::Deref for Channel {
-	type Target = RequestChannel;
-
-	fn deref(&self) -> &Self::Target {
-		&*self.0
-	}
-}
-
-pub struct RequestChannel {
-	send_req: async_channel::Sender<Request>,
-	recv_req: async_channel::Receiver<Request>,
-}
-impl RequestChannel {
-	pub fn try_send_req(&self, req: Request) {
-		let _ = self.send_req.try_send(req);
-	}
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Request {
 	// Only poll for what the latest version is of all installed modules.
 	// This should not actually download any updates.
@@ -73,98 +33,25 @@ pub enum Request {
 	UpdateFile(SourceId),
 }
 
-#[derive(Clone, Derivative)]
-#[derivative(PartialEq)]
-pub struct Status {
-	#[derivative(PartialEq = "ignore")]
-	rw_internal: Rc<RefCell<StatusState>>,
-	r_external: UseStateHandle<StatusState>,
-}
-impl std::fmt::Debug for Status {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct("Status").field("State", &self.rw_internal).field("Display", &self.r_external).finish()
+// The async request channel of the global autosync operation.
+#[derive(Clone, PartialEq)]
+pub struct Channel(channel::Channel<Request>);
+impl std::ops::Deref for Channel {
+	type Target = channel::Channel<Request>;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
 	}
 }
 
-#[derive(Clone, PartialEq, Default, Debug)]
-struct StatusState {
-	stages: Vec<Stage>,
-}
+// The status of the global autosync operation.
+#[derive(Clone, PartialEq)]
+pub struct Status(status::Status);
+impl std::ops::Deref for Status {
+	type Target = status::Status;
 
-#[derive(Clone, PartialEq, Default, Debug)]
-pub struct Stage {
-	pub title: AttrValue,
-	pub progress: Option<Progress>,
-}
-
-#[derive(Clone, PartialEq, Default, Debug)]
-pub struct Progress {
-	pub max: usize,
-	pub progress: usize,
-}
-
-impl Status {
-	fn mutate(&self, perform: impl FnOnce(&mut StatusState)) {
-		let mut state = self.rw_internal.borrow_mut();
-		perform(&mut *state);
-		self.r_external.set(state.clone());
-	}
-
-	pub fn push_stage(&self, title: impl Into<AttrValue>, max_progress: Option<usize>) {
-		self.mutate(move |state| {
-			state
-				.stages
-				.push(Stage { title: title.into(), progress: max_progress.map(|max| Progress { max, progress: 0 }) });
-		});
-	}
-
-	pub fn pop_stage(&self) {
-		self.mutate(move |state| {
-			state.stages.pop();
-		});
-	}
-
-	pub fn set_progress_max(&self, max: usize) {
-		self.mutate(move |state| {
-			let Some(stage) = state.stages.last_mut() else {
-				log::error!(target: "autosync", "status has no stages");
-				return;
-			};
-			let Some(progress) = &mut stage.progress else {
-				log::error!(target: "autosync", "{stage:?} has no progress");
-				return;
-			};
-			progress.max = max;
-		});
-	}
-
-	pub fn increment_progress(&self) {
-		self.mutate(move |state| {
-			let Some(stage) = state.stages.last_mut() else {
-				log::error!(target: "autosync", "status has no stages");
-				return;
-			};
-			let Some(progress) = &mut stage.progress else {
-				log::error!(target: "autosync", "{stage:?} has no progress");
-				return;
-			};
-			progress.progress = progress.max.min(progress.progress + 1);
-		});
-	}
-
-	pub fn is_active(&self) -> bool {
-		!self.r_external.stages.is_empty()
-	}
-
-	pub fn stages(&self) -> &Vec<Stage> {
-		&self.r_external.stages
-	}
-
-	pub fn progress_max(&self) -> Option<usize> {
-		let status = self.rw_internal.borrow();
-		let stage = status.stages.last()?;
-		let progress = stage.progress.as_ref()?;
-		Some(progress.max)
+	fn deref(&self) -> &Self::Target {
+		&self.0
 	}
 }
 
@@ -187,47 +74,17 @@ impl From<anyhow::Error> for StorageSyncError {
 pub fn Provider(props: &ChildrenProps) -> Html {
 	let database = use_context::<Database>().unwrap();
 	let system_depot = use_context::<crate::system::Registry>().unwrap();
-	let channel = Channel(use_memo((), |_| {
-		let (send_req, recv_req) = async_channel::unbounded();
-		RequestChannel { send_req, recv_req }
-	}));
-	let status = Status {
-		rw_internal: Rc::new(RefCell::new(StatusState::default())),
-		r_external: use_state_eq(|| StatusState {
-			/*
-			stages: vec![
-				Stage {
-					title: "Layer 1: Installing".into(),
-					..Default::default()
-				},
-				Stage {
-					title: "Layer 2: Modules".into(),
-					progress: Some(Progress {
-						progress: 2,
-						max: 5,
-					}),
-				},
-				Stage {
-					title: "Layer 3: Files".into(),
-					progress: Some(Progress {
-						progress: 419,
-						max: 650,
-					}),
-				}
-			],
-			// */
-			..Default::default()
-		}),
-	};
+	let channel = Channel(channel::use_channel::<Request>());
+	let status = Status(status::use_status());
 	use_async_with_options::<_, _, StorageSyncError>(
 		{
 			let database = database.clone();
 			let system_depot = system_depot.clone();
-			let recv_req = channel.recv_req.clone();
+			let recv_req = channel.receiver().clone();
 			let status = status.clone();
 			async move {
 				while let Ok(req) = recv_req.recv().await {
-					if let Err(err) = process_request(req, &database, &system_depot, &status).await {
+					if let Err(err) = process_request(req, &database, &system_depot, &status.0).await {
 						log::error!(target: "autosync", "{err:?}");
 					}
 				}
@@ -247,7 +104,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 }
 
 async fn process_request(
-	req: Request, database: &Database, system_depot: &system::Registry, status: &Status,
+	req: Request, database: &Database, system_depot: &system::Registry, status: &status::Status,
 ) -> Result<(), StorageSyncError> {
 	#[cfg(target_family = "wasm")]
 	let storage = {

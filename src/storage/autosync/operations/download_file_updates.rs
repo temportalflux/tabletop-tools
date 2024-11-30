@@ -1,12 +1,12 @@
 use crate::{
-	storage::autosync::{ModuleFile, ModuleFileUpdate},
+	storage::autosync::{status::Status, ModuleFile, ModuleFileUpdate},
 	system::ModuleId,
 };
 use github::{repos, ChangedFileStatus, Error, GithubClient};
 use std::{collections::HashSet, path::Path};
 
 pub struct DownloadFileUpdates {
-	pub status: super::Status,
+	pub status: Status,
 	pub client: GithubClient,
 
 	pub module_id: ModuleId,
