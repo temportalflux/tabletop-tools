@@ -17,7 +17,7 @@ use yew_hooks::*;
 pub mod channel;
 mod operations;
 pub mod status;
-use operations::*;
+pub use operations::*;
 
 #[derive(Debug, Clone)]
 pub enum Request {
@@ -56,7 +56,7 @@ impl std::ops::Deref for Status {
 }
 
 #[derive(thiserror::Error, Debug, Clone)]
-enum StorageSyncError {
+pub enum StorageSyncError {
 	#[error(transparent)]
 	Database(#[from] database::Error),
 	#[error(transparent)]
@@ -110,7 +110,7 @@ async fn process_request(
 	let storage = {
 		let auth_status = yewdux::Dispatch::<crate::auth::Status>::global().get();
 		let Some(storage) = crate::storage::get(&*auth_status) else {
-			log::error!(target: "autosync", "No storage available, cannot progess request {req:?}");
+			log::error!(target: "autosync", "No storage available, cannot process request {req:?}");
 			return Ok(());
 		};
 		storage
@@ -318,7 +318,7 @@ async fn process_request(
 					systems_changed.insert(system.clone());
 				}
 			}
-			
+
 			status.increment_progress();
 		}
 		transaction.commit().await.map_err(database::Error::from)?;

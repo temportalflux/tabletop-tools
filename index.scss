@@ -988,3 +988,8 @@ $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
   --bs-spinner-height: 20px;
   --bs-spinner-border-width: 2px;
 }
+.sync-status > .stage {
+	width: 100%;
+	margin-top: 0.5rem;
+	margin-bottom: 0.5rem;
+}

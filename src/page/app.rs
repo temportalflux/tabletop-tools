@@ -12,7 +12,9 @@ pub fn App() -> Html {
 
 	let display_route = autosync_status.is_active().then_some("d-none");
 	let autosync_takeover = autosync_status.is_active().then(|| {
-		html!(<AutosyncStatusDisplay value={autosync_status} />)
+		html! {
+			<AutosyncStatusDisplay value={autosync_status} />
+		}
 	});
 
 	html! {
@@ -37,30 +39,41 @@ fn AutosyncStatusDisplay(AutosyncStatusProps { value }: &AutosyncStatusProps) ->
 			<div class="d-flex flex-column align-items-center" style="width: 1000px;">
 				{value.stages().iter().enumerate().map(|(idx, stage)| {
 					html! {
-						<div class="w-100 my-2">
-							<div class="d-flex align-items-center">
-								{stage.progress.is_none().then(|| {
-									html!(<div class="spinner-border me-2" role="status" />)
-								})}
-								<div class={format!("h{}", idx+1)}>{&stage.title}</div>
-							</div>
-							{stage.progress.as_ref().map(|status| {
-								let progress = (status.progress as f64 / status.max as f64) * 100f64;
-								html! {
-									<div>
-										<div class="progress" role="progressbar">
-											<div class="progress-bar bg-success" style={format!("width: {progress}%")} />
-										</div>
-										<div class="progress-label-float">
-											{status.progress} {"/"} {status.max}
-										</div>
-									</div>
-								}
-							})}
-						</div>
+						<SyncStateDisplay id={idx.to_string()} stage={stage.clone()} title_classes={classes!(format!("h{}", idx+1))} />
 					}
 				}).collect::<Vec<_>>()}
 			</div>
+		</div>
+	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+pub struct SyncStateDisplayProps {
+	pub id: AttrValue,
+	pub stage: autosync::status::Stage,
+	pub title_classes: Classes,
+}
+#[function_component]
+pub fn SyncStateDisplay(SyncStateDisplayProps { id, stage, title_classes }: &SyncStateDisplayProps) -> Html {
+	html! {
+		<div class="stage" {id}>
+			<div class="d-flex align-items-center">
+				{stage.progress.is_none().then(|| {
+					html!(<div class="spinner-border me-2" role="status" />)
+				})}
+				<div class={classes!("title", title_classes.clone())}>{&stage.title}</div>
+			</div>
+			{stage.progress.as_ref().map(|status| {
+				let progress = (status.progress as f64 / status.max as f64) * 100f64;
+				html!(<div>
+					<div class="progress" role="progressbar">
+						<div class="progress-bar bg-success" style={format!("width: {progress}%")} />
+					</div>
+					<div class="progress-label-float">
+						{status.progress} {"/"} {status.max}
+					</div>
+				</div>)
+			})}
 		</div>
 	}
 }

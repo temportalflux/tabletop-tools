@@ -1,14 +1,15 @@
 use crate::{
 	components::{mobile, Spinner},
-	storage::autosync,
 	system::{dnd5e::components::GeneralProp, SourceId},
 };
 use yew::prelude::*;
 
 mod handle;
 pub use handle::*;
+use yew_hooks::{use_async_with_options, UseAsyncOptions};
 pub mod joined;
 pub mod paged;
+pub mod sync;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum View {
@@ -24,22 +25,42 @@ pub struct ViewProps {
 #[function_component]
 pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 	let character = use_character(props.value.clone());
+	html! {
+		<ContextProvider<CharacterHandle> context={character.clone()}>
+			<sync::CharacterSyncProvider>
+				<SheetContent character_id={props.value.clone()} is_loaded={character.is_loaded()} />
+			</sync::CharacterSyncProvider>
+		</ContextProvider<CharacterHandle>>
+	}
+}
 
-	let autosync_channel = use_context::<autosync::Channel>().unwrap();
-	crate::components::hook::use_document_visibility({
-		let character = character.clone();
-		let autosync_channel = autosync_channel.clone();
-		move |vis| {
-			if vis == web_sys::VisibilityState::Visible && character.is_loaded() {
-				// TODO: This should not use autosync, instead there should be a separate request channel for handling per-character storage requests.
-				autosync_channel.try_send_req(autosync::Request::UpdateFile(character.id().clone()));
+#[derive(Clone, PartialEq, Properties)]
+struct SheetContentProps {
+	character_id: SourceId,
+	is_loaded: bool,
+}
+
+#[function_component]
+fn SheetContent(props: &SheetContentProps) -> Html {
+	// Query character for version updates at a regular interval (e.g. 5 minutes)
+	let character_sync_channel = use_context::<sync::Channel>().unwrap();
+	use_async_with_options::<_, (), ()>(
+		{
+			let channel = character_sync_channel.clone();
+			let duration_between_updates = std::time::Duration::from_secs(60 * 5);
+			async move {
+				loop {
+					channel.try_send_req(());
+					let _ = wasm_timer::Delay::new(duration_between_updates).await;
+				}
 			}
-		}
-	});
+		},
+		UseAsyncOptions::enable_auto(),
+	);
 
 	let screen_size = mobile::use_mobile_kind();
 	let view_handle = use_state_eq({
-		let is_new = !props.value.has_path();
+		let is_new = !props.character_id.has_path();
 		move || match is_new {
 			true => View::Editor,
 			false => View::Display,
@@ -55,19 +76,6 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 		}
 	});
 
-	use_effect_with(props.value.clone(), {
-		let character = character.clone();
-		move |id: &SourceId| {
-			if character.is_loaded() {
-				log::info!("Reloading character with updated id {id:?}");
-				character.unload();
-			}
-		}
-	});
-	if !character.is_loaded() {
-		return html!(<Spinner />);
-	}
-
 	let content = match (screen_size, *view_handle) {
 		(mobile::Kind::Desktop, View::Display) => {
 			html!(<joined::Display {swap_view} />)
@@ -82,17 +90,20 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 			html!("Paged Editor TODO")
 		}
 	};
-	html! {
-		<ContextProvider<CharacterHandle> context={character.clone()}>
-			<div class="w-100 h-100" style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
-				<div class="page-root d-flex flex-row">
-					<SheetSidebar />
-					{content}
-				</div>
-				<crate::components::context_menu::ContextMenu />
+
+	html!(
+		<div class="w-100 h-100" style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
+			<div class="page-root d-flex flex-row">
+				<SheetSidebar />
+				{(!props.is_loaded).then(|| html!(<div>
+					<Spinner />
+					{"Loading character"}
+				</div>))}
+				{props.is_loaded.then_some(content)}
 			</div>
-		</ContextProvider<CharacterHandle>>
-	}
+			<crate::components::context_menu::ContextMenu />
+		</div>
+	)
 }
 
 #[function_component]
@@ -107,7 +118,7 @@ pub fn SheetSidebar() -> Html {
 		<div class="sheet-sidebar d-flex flex-row">
 			<div class="content collapse collapse-horizontal" id="sidebar-collapse">
 				<div class="content d-flex flex-column">
-
+					<CharacterSyncStatusDisplay />
 				</div>
 			</div>
 			<i
@@ -118,6 +129,24 @@ pub fn SheetSidebar() -> Html {
 				type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-collapse" aria-expanded="false"
 				class="bi bi-chevron-bar-right collapse-toggle open"
 			/>
+		</div>
+	}
+}
+
+#[function_component]
+pub fn CharacterSyncStatusDisplay() -> Html {
+	let status = use_context::<sync::Status>().unwrap();
+	html! {
+		<div class="character-sync-status d-flex justify-content-start align-items-center">
+			<div class="d-flex flex-column align-items-center">
+				{status.stages().iter().enumerate().map(|(idx, stage)| {
+					html! {
+						<crate::page::app::SyncStateDisplay
+							id={idx.to_string()} stage={stage.clone()} title_classes={classes!()}
+						/>
+					}
+				}).collect::<Vec<_>>()}
+			</div>
 		</div>
 	}
 }

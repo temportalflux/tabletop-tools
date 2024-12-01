@@ -4,6 +4,8 @@ mod find_file_updates;
 pub use find_file_updates::*;
 mod find_modules;
 pub use find_modules::*;
+mod find_repository;
+pub use find_repository::*;
 mod generate_homebrew;
 pub use generate_homebrew::*;
 mod parse_content;
