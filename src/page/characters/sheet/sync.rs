@@ -89,6 +89,9 @@ async fn fetch_character_changes(
 	let Some(repository) = query.run().await? else { return Ok(()) };
 
 	// TODO: update character remote version
+	// TODO: if out of date, fetch updates from remote
+	//       if there are unsaved local changes, then there has been an issue and the local changes must be stomped on.
+	//         Should display a prompt (and a diff view one day when there is a changelog).
 
 	Ok(())
 }
