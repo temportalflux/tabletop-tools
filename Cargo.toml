@@ -43,7 +43,9 @@ web-sys = { version = "^0.3", features = [
 wasm-bindgen-futures = "^0.4"
 futures = "0.3"
 # blocked by crates/github graphql_client needing 0.15 (https://github.com/graphql-rust/graphql-client/pull/490)
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.12", features = ["json"] }
+#graphql_client = { version = "0.14", features = ["reqwest"] }
+graphql_client = { path = "crates/github/graphql/graphql_client", features = ["reqwest"] }
 serde = "1.0"
 serde_json = "1.0"
 anyhow = "1.0"
@@ -81,7 +83,6 @@ unzip-n = "0.1"
 rand = "0.8"
 wasm-timer = "0.2"
 regex = "1.8"
-graphql_client = { version = "0.14", features = ["reqwest"] }
 tokio = { version="1.26", features=["sync"] }
 base64ct = { version="1.6", features=["alloc"] }
 async-recursion = "1"
