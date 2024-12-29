@@ -21,7 +21,7 @@ pub fn App() -> Html {
 		<BrowserRouter>
 			<Header />
 			{autosync_takeover}
-			<div class={classes!(display_route)}>
+			<div class={classes!("root", display_route)}>
 				<Switch<Route> render={Route::switch} />
 			</div>
 		</BrowserRouter>

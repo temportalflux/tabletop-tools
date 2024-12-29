@@ -16,8 +16,13 @@ html {
 body {
 	//display: flex;
 	//flex-direction: column;
+	height: 100vh;
+	> .root {
+		height: 100%;
+	}
 }
-.page-root {
+.sheet {
+	height: 100%;
 	flex-grow: 1;
 	> .view-scaler {
 		//height: 100%;
@@ -967,19 +972,48 @@ $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
 	}
 }
 
-.sheet-sidebar {
-	> .collapse-toggle {
+@media (min-width: 1200px) {
+	.sheet {
+		--sheet-max-width: 1140px;
+	}
+}
+@media (min-width: 1400px) {
+	.sheet {
+		--sheet-max-width: 1320px;
+	}
+}
+.sheet > .sidebar {
+	display: flex;
+	flex-direction: row;
+
+	--transition-duration: 0.25s;
+
+	> i.open, i.close {
 		font-size: 30px;
+		display: block;
 	}
-	> .collapse-toggle.open[aria-expanded="true"] {
-		display: none;
+
+	> .content {
+		height: 100%;
+		background-color: var(--bs-tertiary-bg);
+		transition: all var(--transition-duration);
 	}
-	> .collapse-toggle.close[aria-expanded="false"] {
+}
+.sheet > .sidebar:not(.active) {
+	> i.close {
 		display: none;
 	}
 	> .content {
-		width: 250px;
-		background-color: var(--bs-tertiary-bg);
+		width: 0;
+	}
+}
+.sheet > .sidebar.active {
+	> i.open {
+		display: none;
+	}
+	> .content {
+		--sidebar-buffer: 40px;
+		width: calc(100vw - var(--sheet-max-width) - var(--sidebar-buffer));
 	}
 }
 

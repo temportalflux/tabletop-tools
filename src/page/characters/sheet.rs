@@ -3,12 +3,13 @@ use crate::{
 	system::{dnd5e::components::GeneralProp, SourceId},
 };
 use yew::prelude::*;
+use yew_hooks::{use_async_with_options, UseAsyncOptions};
 
 mod handle;
 pub use handle::*;
-use yew_hooks::{use_async_with_options, UseAsyncOptions};
 pub mod joined;
 pub mod paged;
+pub mod sidebar;
 pub mod sync;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -27,9 +28,11 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 	let character = use_character(props.value.clone());
 	html! {
 		<ContextProvider<CharacterHandle> context={character.clone()}>
-			<sync::CharacterSyncProvider>
-				<SheetContent character_id={props.value.clone()} is_loaded={character.is_loaded()} />
-			</sync::CharacterSyncProvider>
+			<sidebar::Provider>
+				<sync::CharacterSyncProvider>
+					<SheetContent character_id={props.value.clone()} is_loaded={character.is_loaded()} />
+				</sync::CharacterSyncProvider>
+			</sidebar::Provider>
 		</ContextProvider<CharacterHandle>>
 	}
 }
@@ -93,8 +96,8 @@ fn SheetContent(props: &SheetContentProps) -> Html {
 
 	html!(
 		<div class="w-100 h-100" style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
-			<div class="page-root d-flex flex-row">
-				<SheetSidebar />
+			<div class="sheet d-flex flex-row">
+				<sidebar::Sidebar />
 				{(!props.is_loaded).then(|| html!(<div>
 					<Spinner />
 					{"Loading character"}
@@ -104,49 +107,4 @@ fn SheetContent(props: &SheetContentProps) -> Html {
 			<crate::components::context_menu::ContextMenu />
 		</div>
 	)
-}
-
-#[function_component]
-pub fn SheetSidebar() -> Html {
-	// TODO: maybe use some variant of OffCanvas Vertical NavBar to group both app nav and character nav into the same left-vertical sidebar
-	// https://getbootstrap.com/docs/5.3/components/navbar/#offcanvas
-	// Or the sidebar is just for in-character mode where the character's name and details + sync status are in the side bar,
-	// and the main panel is the character's stats.
-	// TODO: Autosync when installing modules should prevent any changes to modules or character pages.
-	// There should be a fullscreen takeover of the content of those pages until syncing/installing is complete.
-	html! {
-		<div class="sheet-sidebar d-flex flex-row">
-			<div class="content collapse collapse-horizontal" id="sidebar-collapse">
-				<div class="content d-flex flex-column">
-					<CharacterSyncStatusDisplay />
-				</div>
-			</div>
-			<i
-				type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-collapse" aria-expanded="false"
-				class="bi bi-chevron-bar-left collapse-toggle close"
-			/>
-			<i
-				type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-collapse" aria-expanded="false"
-				class="bi bi-chevron-bar-right collapse-toggle open"
-			/>
-		</div>
-	}
-}
-
-#[function_component]
-pub fn CharacterSyncStatusDisplay() -> Html {
-	let status = use_context::<sync::Status>().unwrap();
-	html! {
-		<div class="character-sync-status d-flex justify-content-start align-items-center">
-			<div class="d-flex flex-column align-items-center">
-				{status.stages().iter().enumerate().map(|(idx, stage)| {
-					html! {
-						<crate::page::app::SyncStateDisplay
-							id={idx.to_string()} stage={stage.clone()} title_classes={classes!()}
-						/>
-					}
-				}).collect::<Vec<_>>()}
-			</div>
-		</div>
-	}
 }
