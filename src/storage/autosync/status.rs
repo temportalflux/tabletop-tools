@@ -46,6 +46,12 @@ impl Status {
 		});
 	}
 
+	pub fn clear_stages(&self) {
+		self.mutate(move |state| {
+			state.clear();
+		});
+	}
+
 	pub fn set_progress_max(&self, max: usize) {
 		self.mutate(move |state| {
 			let Some(stage) = state.last_mut() else {

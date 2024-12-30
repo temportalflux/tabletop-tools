@@ -7,6 +7,7 @@ use crate::{
 use anyhow::{Context, Error};
 use database::Transaction;
 use futures::StreamExt;
+use github::RepositoryMetadata;
 use std::{
 	collections::{BTreeMap, BTreeSet, HashMap},
 	sync::Arc,
@@ -227,43 +228,19 @@ async fn process_request(
 
 	// Update module versions or add modules
 	if !remote_repositories.is_empty() {
-		use database::{ObjectStoreExt, TransactionExt};
+		use database::TransactionExt;
 		status.push_stage("Caching remote module versions", None);
 
 		let transaction = database.write()?;
 		let module_store = transaction.object_store_of::<Module>()?;
-
 		for (module_id, repository) in remote_repositories {
-			// if the module is already in memory, then update that entry and include in database update
-			if let Some(module) = modules.get_mut(&module_id) {
-				module.remote_version = repository.version.clone();
-				module_store.put_record(module).await?;
-				continue;
-			}
-			// if the module is not in memory, but could be in the database (not all requests fill the modules list),
-			// then we fetch from database, update the version, and copy the entry both back to database and to our in-memory listing.
-			if let Some(mut module) = module_store.get_record::<Module>(module_id.to_string()).await? {
-				module.remote_version = repository.version.clone();
-				if !module.installed {
-					module.version = module.remote_version.clone();
-				}
-				module_store.put_record(&module).await?;
+			let module = modules.get_mut(&module_id);
+			let mut module = module.cloned();
+			update_module_version(&module_store, &module_id, &repository, &mut module).await?;
+			if let Some(module) = module {
 				modules.insert(module_id.clone(), module);
-				continue;
 			}
-			// doesn't exist at all, so we need a new entry to be added to database.
-			let module = Module {
-				id: module_id.clone(),
-				name: module_id.to_string(),
-				systems: repository.root_trees.iter().cloned().collect(),
-				version: repository.version.clone(),
-				remote_version: repository.version.clone(),
-				installed: false,
-			};
-			module_store.put_record(&module).await?;
-			modules.insert(module_id.clone(), module);
 		}
-
 		transaction.commit().await?;
 
 		status.pop_stage();
@@ -338,47 +315,11 @@ async fn process_request(
 		status.push_stage("Gathering updates", Some(modules_to_install.len()));
 		for module_id in modules_to_install {
 			status.increment_progress();
-
-			let ModuleId::Github { user_org, repository } = &module_id else {
-				// ERROR: Invalid module id to scan
-				continue;
-			};
-			let Some(module) = modules.get_mut(&module_id) else {
-				continue;
-			};
-
-			// For prev uninstalled modules, scan the remote for all files at the latest state.
-			if !module.installed {
-				module.installed = true;
-
-				let scan = ScanRepository {
-					status: status.clone(),
-					client: storage.clone(),
-					owner: user_org.clone(),
-					name: repository.clone(),
-					tree_id: None,
-				};
-				let files = scan.run().await?;
-				let files = files
-					.into_iter()
-					.map(|file| ModuleFileUpdate { file, status: github::ChangedFileStatus::Added })
-					.collect();
-
-				module_updates.push(ModuleUpdate { module_id, files });
-			}
-			// For module updates, ask repo for changed files since current version.
-			else if module.version != module.remote_version {
-				let scan = FindFileUpdates {
-					client: storage.clone(),
-					owner: user_org.clone(),
-					name: repository.clone(),
-					old_version: module.version.clone(),
-					new_version: module.remote_version.clone(),
-				};
-				module.version = module.remote_version.clone();
-
-				let files = scan.run().await?;
-				module_updates.push(ModuleUpdate { module_id, files });
+			if let Some(module) = modules.get_mut(&module_id) {
+				let files = find_module_updates(module, status, &storage).await?;
+				if !files.is_empty() {
+					module_updates.push(ModuleUpdate { module_id, files });
+				}
 			}
 		}
 		status.pop_stage(); // Gathering Updates
@@ -387,86 +328,16 @@ async fn process_request(
 		// Iterate per module so updates can be committed to database as each is fetched.
 		status.push_stage("Downloading Modules", Some(module_updates.len()));
 		for ModuleUpdate { module_id, files } in module_updates {
-			use database::{ObjectStoreExt, TransactionExt};
-
 			status.increment_progress();
-
-			let Some(module) = modules.get(&module_id) else {
+			let Some(module) = modules.get_mut(&module_id) else {
 				continue;
 			};
-
-			// Download all changed files (additions, changes, removals, etc)
-			let download = DownloadFileUpdates {
-				status: status.clone(),
-				client: storage.clone(),
-				module_id: module.id.clone(),
-				version: module.remote_version.clone(),
-				files,
-			};
-			let (files_to_parse, removed_file_ids) = download.run().await?;
-
-			// Parse downloaded content into records
-			let parse_files = ParseFiles {
-				status: status.clone(),
-				system_depot: system_depot.clone(),
-				module_id: module.id.clone(),
-				version: module.remote_version.clone(),
-				files: files_to_parse,
-			};
-			let RecordsToUpdate { entries, user_settings } = parse_files.run().await?;
-
-			status.push_stage(format!("Installing {}", module.id.to_string()), None);
-			{
-				let transaction = database.write()?;
-
-				// Update module data
-				let module_store = transaction.object_store_of::<Module>()?;
-				module_store.put_record(module).await?;
-
-				// Update new or changed records
-				let user_settings_store = transaction.object_store_of::<UserSettingsRecord>();
-				let user_settings_store = user_settings_store.context("UserSettingsRecord store")?;
-				for record in user_settings {
-					user_settings_store.put_record(&record).await?;
-				}
-
-				let entry_store = transaction.object_store_of::<Entry>();
-				let entry_store = entry_store.context("Entry store")?;
-				for record in entries {
-					systems_changed.insert(record.system.clone());
-					entry_store.put_record(&record).await?;
-				}
-
-				// Delete entries by module and file-id
-				let entry_ids_to_remove = {
-					// Convert removed_file_ids (a list of storage file ids) to the list of database ids
-					let idx_module = entry_store.index_of::<crate::database::entry::Module>();
-					let idx_module = idx_module.map_err(database::Error::from)?;
-					let index = crate::database::entry::Module { module: module.id.to_string() };
-					let cursor = idx_module.open_cursor(Some(&index)).await;
-					let mut cursor = cursor.map_err(database::Error::from)?;
-					let mut entry_ids_to_remove = Vec::with_capacity(removed_file_ids.len());
-					// Find the database id of any entry with a storage file id matching any entry in removed_file_ids
-					while let Some(entry) = cursor.next().await {
-						let Some(file_id) = &entry.file_id else {
-							continue;
-						};
-						if removed_file_ids.contains(file_id) {
-							entry_ids_to_remove.push((entry.id.clone(), entry.system.clone()));
-						}
-					}
-					entry_ids_to_remove
-				};
-				for (entry_id, system) in entry_ids_to_remove {
-					systems_changed.insert(system);
-					entry_store.delete_record(entry_id).await?;
-				}
-
-				transaction.commit().await?;
-			}
-			status.pop_stage(); // Installing owner/repo
+			let mut updated_systems =
+				install_module_updates(database, system_depot, status, &storage, module, files).await?;
+			systems_changed.append(&mut updated_systems);
 		}
 		status.pop_stage(); // Downloading Files
+
 		status.pop_stage(); // Installing Modules
 	}
 
@@ -554,6 +425,171 @@ async fn process_request(
 	}
 
 	Ok(())
+}
+
+pub async fn update_module_version(
+	module_store: &idb::ObjectStore, module_id: &ModuleId, repository: &RepositoryMetadata,
+	existing_module: &mut Option<Module>,
+) -> Result<bool, StorageSyncError> {
+	use database::ObjectStoreExt;
+
+	// if the module is already in memory, then update that entry and include in database update
+	if let Some(module) = existing_module {
+		if module.remote_version == repository.version {
+			return Ok(false);
+		}
+
+		module.remote_version = repository.version.clone();
+		module_store.put_record(module).await?;
+		return Ok(true);
+	}
+
+	// if the module is not in memory, but could be in the database (not all requests fill the modules list),
+	// then we fetch from database, update the version, and copy the entry both back to database and to our in-memory listing.
+	if let Some(mut module) = module_store.get_record::<Module>(module_id.to_string()).await? {
+		if module.remote_version == repository.version {
+			return Ok(false);
+		}
+
+		module.remote_version = repository.version.clone();
+		if !module.installed {
+			module.version = module.remote_version.clone();
+		}
+		module_store.put_record(&module).await?;
+		*existing_module = Some(module);
+		return Ok(true);
+	}
+
+	// doesn't exist at all, so we need a new entry to be added to database.
+	let module = Module {
+		id: module_id.clone(),
+		name: module_id.to_string(),
+		systems: repository.root_trees.iter().cloned().collect(),
+		version: repository.version.clone(),
+		remote_version: repository.version.clone(),
+		installed: false,
+	};
+	module_store.put_record(&module).await?;
+	*existing_module = Some(module);
+
+	Ok(true)
+}
+
+pub async fn find_module_updates(
+	module: &mut Module, status: &status::Status, storage: &github::GithubClient,
+) -> Result<Vec<ModuleFileUpdate>, StorageSyncError> {
+	let ModuleId::Github { user_org, repository } = &module.id else {
+		// ERROR: Invalid module id to scan
+		return Ok(Vec::new());
+	};
+
+	// For prev uninstalled modules, scan the remote for all files at the latest state.
+	if !module.installed {
+		let scan = ScanRepository {
+			status: status.clone(),
+			client: storage.clone(),
+			owner: user_org.clone(),
+			name: repository.clone(),
+			tree_id: None,
+		};
+		let files = scan.run().await?;
+		let files =
+			files.into_iter().map(|file| ModuleFileUpdate { file, status: github::ChangedFileStatus::Added }).collect();
+		return Ok(files);
+	}
+	// For module updates, ask repo for changed files since current version.
+	else if module.version != module.remote_version {
+		let scan = FindFileUpdates {
+			client: storage.clone(),
+			owner: user_org.clone(),
+			name: repository.clone(),
+			old_version: module.version.clone(),
+			new_version: module.remote_version.clone(),
+		};
+		let files = scan.run().await?;
+		return Ok(files);
+	}
+
+	Ok(Vec::new())
+}
+
+pub async fn install_module_updates(
+	database: &Database, system_depot: &system::Registry, status: &status::Status, storage: &github::GithubClient,
+	module: &mut Module, files: Vec<ModuleFileUpdate>,
+) -> Result<BTreeSet<String>, StorageSyncError> {
+	use database::{ObjectStoreExt, TransactionExt};
+
+	// Download all changed files (additions, changes, removals, etc)
+	let download = DownloadFileUpdates {
+		status: status.clone(),
+		client: storage.clone(),
+		module_id: module.id.clone(),
+		version: module.remote_version.clone(),
+		files,
+	};
+	let (files_to_parse, removed_file_ids) = download.run().await?;
+
+	// Parse downloaded content into records
+	let parse_files = ParseFiles {
+		status: status.clone(),
+		system_depot: system_depot.clone(),
+		module_id: module.id.clone(),
+		version: module.remote_version.clone(),
+		files: files_to_parse,
+	};
+	let RecordsToUpdate { entries, user_settings } = parse_files.run().await?;
+
+	let transaction = database.write()?;
+	let mut systems_changed = BTreeSet::<String>::new();
+
+	// Update module data
+	let module_store = transaction.object_store_of::<Module>()?;
+	module.installed = true;
+	module.version = module.remote_version.clone();
+	module_store.put_record(module).await?;
+
+	// Update new or changed records
+	let user_settings_store = transaction.object_store_of::<UserSettingsRecord>();
+	let user_settings_store = user_settings_store.context("UserSettingsRecord store")?;
+	for record in user_settings {
+		user_settings_store.put_record(&record).await?;
+	}
+
+	let entry_store = transaction.object_store_of::<Entry>();
+	let entry_store = entry_store.context("Entry store")?;
+	for record in entries {
+		systems_changed.insert(record.system.clone());
+		entry_store.put_record(&record).await?;
+	}
+
+	// Delete entries by module and file-id
+	let entry_ids_to_remove = {
+		// Convert removed_file_ids (a list of storage file ids) to the list of database ids
+		let idx_module = entry_store.index_of::<crate::database::entry::Module>();
+		let idx_module = idx_module.map_err(database::Error::from)?;
+		let index = crate::database::entry::Module { module: module.id.to_string() };
+		let cursor = idx_module.open_cursor(Some(&index)).await;
+		let mut cursor = cursor.map_err(database::Error::from)?;
+		let mut entry_ids_to_remove = Vec::with_capacity(removed_file_ids.len());
+		// Find the database id of any entry with a storage file id matching any entry in removed_file_ids
+		while let Some(entry) = cursor.next().await {
+			let Some(file_id) = &entry.file_id else {
+				continue;
+			};
+			if removed_file_ids.contains(file_id) {
+				entry_ids_to_remove.push((entry.id.clone(), entry.system.clone()));
+			}
+		}
+		entry_ids_to_remove
+	};
+	for (entry_id, system) in entry_ids_to_remove {
+		systems_changed.insert(system);
+		entry_store.delete_record(entry_id).await?;
+	}
+
+	transaction.commit().await?;
+
+	Ok(systems_changed)
 }
 
 async fn gather_generators(

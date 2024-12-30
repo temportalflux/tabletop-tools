@@ -45,6 +45,7 @@ columnSorting:
 
 ## Todo List
 
+- [character-loading-takes-18-seconds](tasks/character-loading-takes-18-seconds.md)
 - [character-changelog](tasks/character-changelog.md)
 - [mutator-to-disable-action-budget](tasks/mutator-to-disable-action-budget.md)
 - [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
@@ -57,10 +58,9 @@ columnSorting:
 
 ## In Progress
 
-- [move-autosync-status-to-sidebar-for-events-information](tasks/move-autosync-status-to-sidebar-for-events-information.md)
-
 ## Done
 
+- [move-autosync-status-to-sidebar-for-events-information](tasks/move-autosync-status-to-sidebar-for-events-information.md)
 - [view-scaler-re-eval](tasks/view-scaler-re-eval.md)
 - [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
 - [mutator-to-grant-uses-on-rest](tasks/mutator-to-grant-uses-on-rest.md)

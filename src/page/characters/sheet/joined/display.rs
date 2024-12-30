@@ -4,7 +4,6 @@ use crate::{
 	database::{Database, Entry},
 	page::characters::sheet::{CharacterHandle, ViewProps},
 	system::{
-		self,
 		dnd5e::{
 			components::{
 				ability, panel, rest, ArmorClass, ConditionsCard, DefensesCard, HitPointMgmtCard, InitiativeBonus,
@@ -15,7 +14,6 @@ use crate::{
 		Block, ModuleId, SourceId,
 	},
 };
-use anyhow::Context;
 use kdlize::NodeId;
 use yew::prelude::*;
 use yew_router::prelude::use_navigator;
@@ -29,93 +27,14 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 	let database = use_context::<Database>().unwrap();
 	let state = use_context::<CharacterHandle>().unwrap();
 	let (auth_status, _dispatch) = use_store::<auth::Status>();
+	let character_sync_channel = use_context::<crate::page::characters::sheet::sync::Channel>().unwrap();
 	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
-	let system_depot = use_context::<system::Registry>().unwrap();
 	let navigator = use_navigator().unwrap();
 
 	let fetch_from_storage = Callback::from({
-		let auth_status = auth_status.clone();
-		let task_dispatch = task_dispatch.clone();
-		let system_depot = system_depot.clone();
-		let database = database.clone();
-		let id = state.id().clone();
+		let channel = character_sync_channel.clone();
 		move |_| {
-			let Some(client) = crate::storage::get(&*auth_status) else {
-				log::debug!("no storage client");
-				return;
-			};
-			let system_depot = system_depot.clone();
-			let database = database.clone();
-			let id = id.clone();
-			task_dispatch.spawn("Fetch Character", None, async move {
-				log::debug!("Forcibly fetching {:?}", id.to_string());
-
-				let id_str = id.unversioned().to_string();
-				let Some(mut entry) = database.get::<Entry>(&id_str).await? else {
-					log::error!("missing entry");
-					return Ok(());
-				};
-
-				let SourceId { module: Some(ModuleId::Github { user_org, repository }), system, path, version, .. } =
-					&id
-				else {
-					log::error!("non-github source id");
-					return Ok(());
-				};
-				let Some(version) = version.clone() else {
-					log::error!("Mission version in character id");
-					return Ok(());
-				};
-				let Some(system) = system.clone() else {
-					log::error!("Mission system in character id");
-					return Ok(());
-				};
-				let path_in_repo = std::path::Path::new(&system).join(&path);
-				let user_org = user_org.clone();
-				let repository = repository.clone();
-
-				let args = github::repos::contents::get::Args {
-					owner: user_org.as_str(),
-					repo: repository.as_str(),
-					path: path_in_repo.as_path(),
-					version: version.as_str(),
-				};
-				let content = client
-					.get_file_content(args)
-					.await
-					.with_context(|| format!("Failed to fetch content from storage"))?;
-
-				let Some(system_reg) = system_depot.get(&system) else {
-					log::error!("Mission system registration for {system:?}");
-					return Ok(());
-				};
-				let document =
-					content.parse::<kdl::KdlDocument>().with_context(|| format!("Failed to parse fetched content"))?;
-				let Some(node) = document.nodes().get(0) else {
-					log::error!("Character data is empty, no first node in {content:?}");
-					return Ok(());
-				};
-				let metadata = system_reg.parse_metadata(node, &id)?;
-
-				entry.kdl = content;
-				entry.metadata = metadata;
-
-				log::debug!("Successfully force-fetched {:?}", id.to_string());
-
-				database
-					.mutate(move |transaction| {
-						use crate::database::Entry;
-						use database::{ObjectStoreExt, TransactionExt};
-						Box::pin(async move {
-							let entry_store = transaction.object_store_of::<Entry>()?;
-							entry_store.put_record(&entry).await?;
-							Ok(())
-						})
-					})
-					.await?;
-
-				Ok(()) as anyhow::Result<()>
-			});
+			channel.try_send_req(());
 		}
 	});
 	let fetch_btn = match state.id().has_path() {
@@ -284,7 +203,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 	</>};
 
 	html! {
-		<div class="container overflow-hidden">
+		<div class="container overflow-hidden d-flex flex-column">
 			<div class="d-flex border-bottom-theme-muted mt-1 mb-2 px-3 pb-1">
 				<Header />
 				<div class="ms-auto d-flex flex-column justify-content-center">
@@ -300,7 +219,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 					</div>
 				</div>
 			</div>
-			<div class="row" style="--bs-gutter-x: 10px;">
+			<div class="row flex-grow-1" style="--bs-gutter-x: 10px;">
 				<div class="col-md-auto" style="max-width: 210px;">
 
 					<div class="row m-0" style="--bs-gutter-x: 0;">
@@ -333,10 +252,10 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 					</div>
 
 				</div>
-				<div class="col">
+				<div class="col d-flex flex-column">
 					{above_panels_content}
 
-					<div class="card m-1" style="height: 550px;">
+					<div class="card m-1 flex-grow-1">
 						<div class="card-body d-flex flex-column" style="padding: 5px;">
 							<Nav root_classes={"onesheet-tabs"} disp={NavDisplay::Tabs} default_tab_id={"actions"}>
 								<TabContent id="actions" title={html! {{"Actions"}}}>

@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use yew::prelude::*;
 use crate::page::characters::sheet::sync;
+use yew::prelude::*;
 
 #[derive(Clone, PartialEq)]
 struct Control(UseReducerHandle<State>);

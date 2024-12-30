@@ -95,10 +95,10 @@ fn SheetContent(props: &SheetContentProps) -> Html {
 	};
 
 	html!(
-		<div class="w-100 h-100" style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
-			<div class="sheet d-flex flex-row">
+		<div class="sheet-app" style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
+			<div class="sheet d-flex flex-row flex-grow-1">
 				<sidebar::Sidebar />
-				{(!props.is_loaded).then(|| html!(<div>
+				{(!props.is_loaded).then(|| html!(<div class="loading">
 					<Spinner />
 					{"Loading character"}
 				</div>))}

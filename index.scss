@@ -14,15 +14,21 @@ html {
 	//height: 100%;
 }
 body {
-	//display: flex;
-	//flex-direction: column;
+	display: flex;
+	flex-direction: column;
 	height: 100vh;
 	> .root {
-		height: 100%;
+		flex-grow: 1;
+		display: flex;
+		flex-direction: column;
 	}
 }
+.sheet-app {
+	flex-grow: 1;
+	display: flex;
+	flex-direction: column;
+}
 .sheet {
-	height: 100%;
 	flex-grow: 1;
 	> .view-scaler {
 		//height: 100%;
@@ -711,6 +717,11 @@ button.collapse_trigger.arrow_right.collapsed::after {
 	}
 }
 
+.onesheet-tabs > .tab-content > .tab-pane > .panel {
+	display: flex;
+  flex-direction: column;
+}
+
 .panel.spells > .caster-stats {
 	> .names {
 		text-align: center!important;
@@ -732,6 +743,7 @@ button.collapse_trigger.arrow_right.collapsed::after {
 }
 
 .panel.actions > .pane {
+	flex-grow: 1;
 	overflow-y: auto;
 	border-top: var(--bs-border-width) var(--bs-border-style) var(--theme-frame-color)!important;
 }
@@ -972,6 +984,10 @@ $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
 	}
 }
 
+.sheet > .loading {
+
+}
+
 @media (min-width: 1200px) {
 	.sheet {
 		--sheet-max-width: 1140px;
@@ -985,6 +1001,7 @@ $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
 .sheet > .sidebar {
 	display: flex;
 	flex-direction: row;
+	align-items: center;
 
 	--transition-duration: 0.25s;
 
@@ -1004,6 +1021,7 @@ $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
 		display: none;
 	}
 	> .content {
+		opacity: 0%;
 		width: 0;
 	}
 }
@@ -1012,6 +1030,7 @@ $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
 		display: none;
 	}
 	> .content {
+		opacity: 100%;
 		--sidebar-buffer: 40px;
 		width: calc(100vw - var(--sheet-max-width) - var(--sidebar-buffer));
 	}

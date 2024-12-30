@@ -68,6 +68,7 @@ impl ParseFiles {
 				module: Some(self.module_id.clone()),
 				system: system.clone(),
 				path: PathBuf::from(&path_in_repo),
+				// TODO: Should this include version?
 				..Default::default()
 			};
 			if document.nodes().len() > 1 {
