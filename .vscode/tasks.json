@@ -27,8 +27,8 @@
 		},
 		{
 			"label": "4. [Cargo] Format",
-			"command": "cargo",
-			"args": [ "+nightly", "fmt", "--all" ],
+      "type": "shell",
+			"command": "for path in \"\" \"crates/database/\" \"crates/github/\" \"crates/kdlize/\" \"crates/netlify-oauth/\"; do cargo +nightly fmt --manifest-path ${path}Cargo.toml; done",
 			"group": "build",
 			"problemMatcher": []
 		},

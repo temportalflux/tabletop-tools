@@ -45,18 +45,19 @@ columnSorting:
 
 ## Todo List
 
-- [character-loading-takes-18-seconds](tasks/character-loading-takes-18-seconds.md)
 - [character-changelog](tasks/character-changelog.md)
+- [embed-item-and-condition-indirection-in-characters](tasks/embed-item-and-condition-indirection-in-characters.md)
+- [upgrade-kdl-to-6-x](tasks/upgrade-kdl-to-6-x.md)
 - [mutator-to-disable-action-budget](tasks/mutator-to-disable-action-budget.md)
-- [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
-- [display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel](tasks/display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel.md)
-- [wizard-spell-mastery](tasks/wizard-spell-mastery.md)
-- [beserker-barbarian-frenzy](tasks/beserker-barbarian-frenzy.md)
-- [open-hand-monk-tranquility](tasks/open-hand-monk-tranquility.md)
-- [devotion-paladin-purity-of-spirit](tasks/devotion-paladin-purity-of-spirit.md)
 - [spellcasting-limited-by-both-slot-and-uses-at-the-same-time](tasks/spellcasting-limited-by-both-slot-and-uses-at-the-same-time.md)
+- [display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel](tasks/display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel.md)
+- [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
+- [wizard-spell-mastery](tasks/wizard-spell-mastery.md)
+- [apply-when-rest-rest-mutator-can-grant-conditions](tasks/apply-when-rest-rest-mutator-can-grant-conditions.md)
 
 ## In Progress
+
+- [migrate-spell-query-on-recompile-to-a-background-task](tasks/migrate-spell-query-on-recompile-to-a-background-task.md)
 
 ## Done
 
