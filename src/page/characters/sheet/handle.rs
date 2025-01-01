@@ -21,9 +21,12 @@ pub fn use_character(id: SourceId) -> CharacterHandle {
 	let handle = CharacterHandle {
 		object_cache: ObjectCacheProvider::new(&database, &system_depot, &object_cache),
 		task_dispatch,
-		state,
+		state: state.clone(),
 		pending_data: Rc::new(Mutex::new(None)),
-		state_backup: Rc::new(Mutex::new(None)),
+		state_backup: Rc::new(Mutex::new(match &*state {
+			CharacterState::Loaded(character) => Some(character.clone()),
+			CharacterState::Unloaded => None,
+		})),
 		pending_mutations: Rc::new(Mutex::new(Vec::new())),
 	};
 
