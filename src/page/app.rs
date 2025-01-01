@@ -120,7 +120,7 @@ fn Header() -> Html {
 		<header>
 			<nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary">
 				<div class="container-fluid">
-					<Link<Route> classes={classes!("navbar-brand", cls_disabled)} to={Route::Home}>{"Integro Tabletop"}</Link<Route>>
+					<Link<Route> classes={"navbar-brand"} to={Route::Home}>{"Integro Tabletop"}</Link<Route>>
 					<button
 						class="navbar-toggler" type="button"
 						data-bs-toggle="collapse" data-bs-target="#navContent"
