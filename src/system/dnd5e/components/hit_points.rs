@@ -1,13 +1,13 @@
 use crate::{
 	components::{context_menu, stop_propagation},
-	page::characters::sheet::{CharacterHandle, MutatorImpact},
+	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
 		components::UseCounterDelta,
 		data::character::{DeathSave, HitPoint},
 	},
 	utility::InputExt,
 };
-use std::{cmp::Ordering, path::PathBuf};
+use std::cmp::Ordering;
 use yew::prelude::*;
 
 static TEXT_HIT_POINTS: &'static str = "\
@@ -497,14 +497,6 @@ fn ModalSectionHitDice() -> Html {
 		and force the usage of hit dice outside of rests. These inputs will not change your hit points, \
 		just the number of hit dice you have available until your next Long Rest.";
 
-	let apply_delta = state.new_dispatch(|(data_path, delta): (PathBuf, i32), persistent| {
-		let prev_value = persistent.get_first_selection_at::<u32>(&data_path);
-		let prev_value = prev_value.map(Result::ok).flatten().unwrap_or_default();
-		let new_value = ((prev_value as i32) + delta).max(0) as u32;
-		persistent.set_selected(data_path, (new_value > 0).then(|| new_value.to_string()));
-		MutatorImpact::None
-	});
-
 	let mut sections = Vec::new();
 	for (die, capacity) in state.hit_dice().dice() {
 		if *capacity == 0 {
@@ -523,7 +515,9 @@ fn ModalSectionHitDice() -> Html {
 				<UseCounterDelta
 					max_uses={*capacity as u32}
 					consumed_uses={consumed_uses}
-					on_apply={apply_delta.reform(move |delta: i32| (data_path.clone(), -delta))}
+					on_apply={state.dispatch_change(move |uses_remaining_delta: i32| {
+						Some(crate::system::dnd5e::change::hit_points::HitDice { die, delta: -uses_remaining_delta })
+					})}
 				/>
 			</div>
 			{state.hit_dice().sources().iter().map(|(roll, source)| {
@@ -724,7 +718,7 @@ fn DeathSaveBoxes(DeathSaveBoxesProps { save }: &DeathSaveBoxesProps) -> Html {
 			let Some(checked) = evt.input_checked() else { return None };
 			Some(hit_points::DeathSaves {
 				save,
-				amount: match checked {
+				delta: match checked {
 					true => 1,
 					false => -1,
 				},
