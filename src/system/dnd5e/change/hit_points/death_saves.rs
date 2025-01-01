@@ -1,6 +1,9 @@
 use crate::{
 	kdl_ext::NodeContext,
-	system::{dnd5e::data::character::{Character, DeathSave}, Change},
+	system::{
+		dnd5e::data::character::{Character, DeathSave},
+		Change,
+	},
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 

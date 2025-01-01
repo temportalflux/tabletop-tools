@@ -3,7 +3,7 @@ use crate::{
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::dnd5e::{
 		components::UseCounterDelta,
-		data::character::{DeathSave, HitPoint, Persistent},
+		data::character::{DeathSave, HitPoint},
 	},
 	utility::InputExt,
 };
@@ -295,17 +295,10 @@ fn ModalSectionDeathSaves() -> Html {
 #[function_component]
 fn ModalSectionCurrentStats() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let apply_temp_hp = Callback::from({
-		let state = state.clone();
-		move |evt: web_sys::Event| {
-			let Some(value) = evt.input_value_t::<u32>() else {
-				return;
-			};
-			state.dispatch(Box::new(move |persistent: &mut Persistent| {
-				persistent.hit_points_mut().temp = value;
-				MutatorImpact::None
-			}));
-		}
+	let apply_temp_hp = state.dispatch_change(move |evt: web_sys::Event| {
+		use crate::system::dnd5e::change::hit_points;
+		let Some(value) = evt.input_value_t::<u32>() else { return None };
+		Some(hit_points::TempHP(value))
 	});
 	html! {
 		<div class="row my-1" style="--bs-gutter-x: 0;">
@@ -728,9 +721,7 @@ fn DeathSaveBoxes(DeathSaveBoxesProps { save }: &DeathSaveBoxesProps) -> Html {
 		let save = *save;
 		move |evt: web_sys::Event| {
 			use crate::system::dnd5e::change::hit_points;
-			let Some(checked) = evt.input_checked() else {
-				return None
-			};			
+			let Some(checked) = evt.input_checked() else { return None };
 			Some(hit_points::DeathSaves {
 				save,
 				amount: match checked {

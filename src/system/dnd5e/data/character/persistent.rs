@@ -344,7 +344,7 @@ impl FromStr for DeathSave {
 		match s {
 			"failure" => Ok(Self::Failure),
 			"success" => Ok(Self::Success),
-			_ => Err(NotInList(s.to_owned(), vec!["failure", "success"]))
+			_ => Err(NotInList(s.to_owned(), vec!["failure", "success"])),
 		}
 	}
 }
@@ -395,7 +395,7 @@ impl AsKdl for HitPoints {
 				let mut node = NodeBuilder::default();
 				for (kind, amount) in self.saves {
 					if amount <= 0 {
-						continue
+						continue;
 					}
 					node.entry((kind.to_string(), amount as i64));
 				}
