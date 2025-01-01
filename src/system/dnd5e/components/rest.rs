@@ -61,8 +61,7 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 					persistent.hit_points.temp = 0;
 					changes.push(format!("Cleared temporary hit points."));
 
-					persistent.hit_points.failure_saves = 0;
-					persistent.hit_points.success_saves = 0;
+					persistent.hit_points.saves = Default::default();
 					changes.push(format!("Cleared saving throws."));
 
 					let hit_die_paths = {

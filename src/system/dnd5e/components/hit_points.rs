@@ -3,7 +3,7 @@ use crate::{
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::dnd5e::{
 		components::UseCounterDelta,
-		data::character::{HitPoint, Persistent},
+		data::character::{DeathSave, HitPoint, Persistent},
 	},
 	utility::InputExt,
 };
@@ -234,8 +234,8 @@ fn DeathSavesBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 					<div class="death-save-label">{"SUCCESS"}</div>
 				</div>
 				<div class="col-auto p-0" onclick={stop_propagation()}>
-					<DeathSaveBoxes class_name={"failure"} />
-					<DeathSaveBoxes class_name={"success"} />
+					<DeathSaveBoxes save={DeathSave::Failure} />
+					<DeathSaveBoxes save={DeathSave::Success} />
 				</div>
 			</div>
 		</div>
@@ -280,11 +280,11 @@ fn ModalSectionDeathSaves() -> Html {
 			<div class="row m-0 justify-content-center">
 				<div class="col-auto py-0 px-4">
 					<h6>{"Failures"}</h6>
-					<DeathSaveBoxes class_name={"failure"} />
+					<DeathSaveBoxes save={DeathSave::Failure} />
 				</div>
 				<div class="col-auto py-0 px-4">
 					<h6>{"Successes"}</h6>
-					<DeathSaveBoxes class_name={"success"} />
+					<DeathSaveBoxes save={DeathSave::Success} />
 				</div>
 			</div>
 			<span class="hr my-3" />
@@ -715,39 +715,33 @@ fn ModalSectionInfo() -> Html {
 
 #[derive(Clone, PartialEq, Properties)]
 struct DeathSaveBoxesProps {
-	class_name: AttrValue,
+	save: DeathSave,
 }
 #[function_component]
-fn DeathSaveBoxes(DeathSaveBoxesProps { class_name }: &DeathSaveBoxesProps) -> Html {
+fn DeathSaveBoxes(DeathSaveBoxesProps { save }: &DeathSaveBoxesProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
-	let mut classes = classes!("form-check-input");
-	classes.push(class_name.as_str().to_owned());
+	let mut classes: Classes = classes!("form-check-input");
+	classes.push(save.as_str().to_owned());
 
-	let onchange = state.new_dispatch({
-		let class_name = class_name.clone();
-		move |evt: web_sys::Event, persistent| {
+	let onchange = state.dispatch_change({
+		let save = *save;
+		move |evt: web_sys::Event| {
+			use crate::system::dnd5e::change::hit_points;
 			let Some(checked) = evt.input_checked() else {
-				return MutatorImpact::None;
-			};
-			let save_count = match class_name.as_str() {
-				"failure" => &mut persistent.hit_points_mut().failure_saves,
-				"success" => &mut persistent.hit_points_mut().success_saves,
-				_ => return MutatorImpact::None,
-			};
-			*save_count = match checked {
-				true => save_count.saturating_add(1),
-				false => save_count.saturating_sub(1),
-			};
-			MutatorImpact::None
+				return None
+			};			
+			Some(hit_points::DeathSaves {
+				save,
+				amount: match checked {
+					true => 1,
+					false => -1,
+				},
+			})
 		}
 	});
 
-	let save_count = match class_name.as_str() {
-		"failure" => state.hit_points().failure_saves,
-		"success" => state.hit_points().success_saves,
-		_ => 0,
-	};
+	let save_count = state.hit_points().saves[*save];
 	html! {
 		<div>
 			<input class={classes.clone()} type="checkbox" onchange={onchange.clone()} checked={save_count >= 1} />

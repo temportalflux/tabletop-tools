@@ -319,12 +319,41 @@ impl AsKdl for Persistent {
 	}
 }
 
+#[derive(Clone, Copy, PartialEq, Debug, enum_map::Enum)]
+pub enum DeathSave {
+	Success,
+	Failure,
+}
+impl DeathSave {
+	pub fn as_str(&self) -> &'static str {
+		match self {
+			Self::Failure => "failure",
+			Self::Success => "success",
+		}
+	}
+}
+impl ToString for DeathSave {
+	fn to_string(&self) -> String {
+		self.as_str().to_owned()
+	}
+}
+impl FromStr for DeathSave {
+	type Err = NotInList;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s {
+			"failure" => Ok(Self::Failure),
+			"success" => Ok(Self::Success),
+			_ => Err(NotInList(s.to_owned(), vec!["failure", "success"]))
+		}
+	}
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub struct HitPoints {
 	pub current: u32,
 	pub temp: u32,
-	pub failure_saves: u8,
-	pub success_saves: u8,
+	pub saves: EnumMap<DeathSave, u8>,
 	pub hit_dice_selectors: EnumMap<Die, selector::Value<Character, u32>>,
 }
 impl Default for HitPoints {
@@ -332,8 +361,7 @@ impl Default for HitPoints {
 		Self {
 			current: Default::default(),
 			temp: Default::default(),
-			failure_saves: Default::default(),
-			success_saves: Default::default(),
+			saves: Default::default(),
 			hit_dice_selectors: EnumMap::from_fn(|die| {
 				let id = IdPath::from(Some(format!("hit_die/{die}")));
 				selector::Value::Options(selector::ValueOptions { id, ..Default::default() })
@@ -346,9 +374,15 @@ impl FromKdl<NodeContext> for HitPoints {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let current = node.query_i64_req("scope() > current", 0)? as u32;
 		let temp = node.query_i64_req("scope() > temp", 0)? as u32;
-		let failure_saves = node.query_i64_req("scope() > failure_saves", 0)? as u8;
-		let success_saves = node.query_i64_req("scope() > success_saves", 0)? as u8;
-		Ok(Self { current, temp, failure_saves, success_saves, ..Default::default() })
+
+		let mut saves = EnumMap::<DeathSave, u8>::default();
+		if let Some(node) = node.query_opt("scope() > saves")? {
+			for (kind, amount) in &mut saves {
+				*amount = node.get_i64_opt(&kind.to_string())?.unwrap_or(0) as u8;
+			}
+		}
+
+		Ok(Self { current, temp, saves, ..Default::default() })
 	}
 }
 impl AsKdl for HitPoints {
@@ -356,8 +390,18 @@ impl AsKdl for HitPoints {
 		let mut node = NodeBuilder::default();
 		node.child(("current", &self.current));
 		node.child(("temp", &self.temp));
-		node.child(("failure_saves", &self.failure_saves));
-		node.child(("success_saves", &self.success_saves));
+		if self.saves != Default::default() {
+			node.child(("saves", {
+				let mut node = NodeBuilder::default();
+				for (kind, amount) in self.saves {
+					if amount <= 0 {
+						continue
+					}
+					node.entry((kind.to_string(), amount as i64));
+				}
+				node
+			}));
+		}
 		node
 	}
 }
@@ -384,8 +428,7 @@ impl HitPoints {
 			_ => {}
 		}
 		if !had_hp && self.current != 0 {
-			self.failure_saves = 0;
-			self.success_saves = 0;
+			self.saves = EnumMap::default();
 		}
 		self
 	}
@@ -671,7 +714,12 @@ mod test_hit_points {
 			|    success_saves 2
 			|}
 		";
-		let data = HitPoints { current: 30, temp: 5, failure_saves: 1, success_saves: 2, ..Default::default() };
+		let data = HitPoints {
+			current: 30,
+			temp: 5,
+			saves: enum_map::enum_map! { DeathSave::Failure => 1, DeathSave::Success => 2},
+			..Default::default()
+		};
 		assert_eq_fromkdl!(HitPoints, doc, data);
 		assert_eq_askdl!(&data, doc);
 		Ok(())

@@ -87,6 +87,7 @@ pub fn node_registry() -> generics::Registry {
 
 pub fn change_registry() -> super::change::Registry {
 	let mut registry = super::change::Registry::default();
+	registry.register::<change::hit_points::DeathSaves>();
 	registry.register::<change::hit_points::HealOrDamage>();
 	registry
 }
