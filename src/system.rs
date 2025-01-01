@@ -7,6 +7,8 @@ pub use source::*;
 
 pub mod block;
 pub use block::Block;
+pub mod change;
+pub use change::Change;
 
 mod registry;
 pub use registry::*;
@@ -27,6 +29,7 @@ pub trait System {
 	fn get_id(&self) -> &'static str;
 	fn blocks(&self) -> &block::Registry;
 	fn generics(&self) -> &Arc<generics::Registry>;
+	fn changes(&self) -> &change::Registry;
 }
 
 pub fn system_registry() -> Registry {

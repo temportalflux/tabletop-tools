@@ -28,6 +28,7 @@ pub fn use_character(id: SourceId) -> CharacterHandle {
 			CharacterState::Unloaded => None,
 		})),
 		pending_mutations: Rc::new(Mutex::new(Vec::new())),
+		pending_changes: Rc::new(Mutex::new(Vec::new())),
 	};
 
 	// Character Initialization
@@ -68,6 +69,7 @@ pub struct CharacterHandle {
 	// shared-data after a couple of frames (not immediately in the same stack that an update is dispatched).
 	state_backup: Rc<Mutex<Option<Character>>>,
 	pending_mutations: Rc<Mutex<Vec<FnMutator>>>,
+	pending_changes: Rc<Mutex<Vec<Box<dyn system::Change<Target = Character>>>>>,
 }
 impl PartialEq for CharacterHandle {
 	fn eq(&self, other: &Self) -> bool {
@@ -92,6 +94,7 @@ impl CharacterHandle {
 	}
 
 	pub fn unload(&self) {
+		*self.state_backup.lock().unwrap() = None;
 		self.state.set(CharacterState::Unloaded);
 	}
 
@@ -197,24 +200,31 @@ impl CharacterHandle {
 				requires_recompile = false;
 			}
 
-			let pending = {
+			let mutations = {
 				let mut pending = self.pending_mutations.lock().unwrap();
 				pending.drain(..).collect::<Vec<_>>()
 			};
-			if !pending.is_empty() {
-				let mut character_guard = self.pending_data.lock().unwrap();
-				if let Some(character) = &mut *character_guard {
-					for mutator in pending {
-						match mutator(character.persistent_mut()) {
-							MutatorImpact::None => {}
-							MutatorImpact::Recompile => {
-								requires_recompile = true;
-							}
+			let changes = {
+				let mut pending = self.pending_changes.lock().unwrap();
+				pending.drain(..).collect::<Vec<_>>()
+			};
+			if mutations.is_empty() && changes.is_empty() {
+				break 'recompile_and_mutate;
+			}
+
+			if let Some(character) = &mut *self.pending_data.lock().unwrap() {
+				for mutation in mutations {
+					match mutation(character.persistent_mut()) {
+						MutatorImpact::None => {}
+						MutatorImpact::Recompile => {
+							requires_recompile = true;
 						}
 					}
 				}
-			} else {
-				break 'recompile_and_mutate;
+				for change in changes {
+					change.apply_to(character);
+					// TODO: Check persistent data for structural changes
+				}
 			}
 		}
 	}
@@ -280,9 +290,7 @@ impl CharacterHandle {
 				let mut using_loaded_character = false;
 				if pending_guard.is_none() {
 					using_loaded_character = true;
-					if let Some(state) = &*handle.state_backup.lock().unwrap() {
-						*pending_guard = Some(state.clone());
-					}
+					*pending_guard = handle.state_backup.lock().unwrap().clone();
 				}
 				let Some(character) = &mut *pending_guard else {
 					log::error!(target: "character",
@@ -313,6 +321,31 @@ impl CharacterHandle {
 		});
 	}
 
+	fn trigger_process_pending_mutations(&self) {
+		if self.pending_mutations.lock().unwrap().is_empty() && self.pending_changes.lock().unwrap().is_empty() {
+			return;
+		}
+		// If there is already an operation in progress, we cannot process mutations right now.
+		let mut pending_guard = self.pending_data.lock().unwrap();
+		if pending_guard.is_some() {
+			log::warn!("there is already data pending");
+			return;
+		}
+		// If there is no data yet loaded, we cannot process mutations right now.
+		let character = match self.state_backup.lock().unwrap().as_ref() {
+			Some(character) => character.clone(),
+			None => {
+				log::error!("character not loaded");
+				return;
+			}
+		};
+
+		*pending_guard = Some(character);
+		drop(pending_guard);
+
+		self.trigger_recompile(false);
+	}
+
 	pub fn dispatch<F>(&self, mutator: F)
 	where
 		F: FnOnce(&mut Persistent) -> MutatorImpact + 'static,
@@ -322,27 +355,6 @@ impl CharacterHandle {
 			pending_mutations.push(Box::new(mutator));
 		}
 		self.trigger_process_pending_mutations();
-	}
-
-	fn trigger_process_pending_mutations(&self) {
-		if self.pending_mutations.lock().unwrap().is_empty() {
-			return;
-		}
-		// If there is already an operation in progress, we cannot process mutations right now.
-		let mut pending_guard = self.pending_data.lock().unwrap();
-		if pending_guard.is_some() {
-			return;
-		}
-		// If there is no data yet loaded, we cannot process mutations right now.
-		let character = match self.state_backup.lock().unwrap().as_ref() {
-			Some(character) => character.clone(),
-			None => return,
-		};
-
-		*pending_guard = Some(character);
-		drop(pending_guard);
-
-		self.trigger_recompile(false);
 	}
 
 	pub fn new_dispatch<I, F>(&self, mutator: F) -> Callback<I>
@@ -355,6 +367,31 @@ impl CharacterHandle {
 		Callback::from(move |input: I| {
 			let mutator = mutator.clone();
 			handle.dispatch(move |persistent| (*mutator)(input, persistent));
+		})
+	}
+
+	pub fn add_change(&self, change: impl system::Change<Target = Character> + 'static) {
+		// TODO: Eventually changes will be stored in the description body of storage chanegs (git change body).
+		// for now we treat them as instantaneous mutations
+		{
+			let mut pending_changes = self.pending_changes.lock().unwrap();
+			pending_changes.push(Box::new(change));
+		}
+		self.trigger_process_pending_mutations();
+	}
+
+	pub fn dispatch_change<I, F, O>(&self, generator: F) -> Callback<I>
+	where
+		I: 'static,
+		F: Fn(I) -> Option<O> + 'static,
+		O: system::Change<Target = Character> + 'static,
+	{
+		let handle = self.clone();
+		let generator = std::rc::Rc::new(generator);
+		Callback::from(move |input: I| {
+			if let Some(change) = (*generator)(input) {
+				handle.add_change(change);
+			}
 		})
 	}
 }

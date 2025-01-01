@@ -45,7 +45,6 @@ columnSorting:
 
 ## Todo List
 
-- [character-changelog](tasks/character-changelog.md)
 - [embed-item-and-condition-indirection-in-characters](tasks/embed-item-and-condition-indirection-in-characters.md)
 - [upgrade-kdl-to-6-x](tasks/upgrade-kdl-to-6-x.md)
 - [mutator-to-disable-action-budget](tasks/mutator-to-disable-action-budget.md)
@@ -56,6 +55,8 @@ columnSorting:
 - [apply-when-rest-rest-mutator-can-grant-conditions](tasks/apply-when-rest-rest-mutator-can-grant-conditions.md)
 
 ## In Progress
+
+- [character-changelog](tasks/character-changelog.md)
 
 ## Done
 

@@ -1,10 +1,11 @@
 ---
 created: 2023-09-20T13:51:39.013Z
-updated: 2024-11-16T17:21:21.774Z
+updated: 2025-01-01T19:28:24.680Z
 assigned: ""
 progress: 0
 tags:
   - App
+started: 2025-01-01T19:28:24.680Z
 ---
 
 # Character Changelog

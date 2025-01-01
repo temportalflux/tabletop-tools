@@ -241,7 +241,6 @@ impl Spellcasting {
 
 	pub fn insert_resolved_prepared_spell(&mut self, spell: Spell) {
 		let spell_id = spell.id.unversioned();
-		log::debug!(target: "character", "Inserting spell data for {spell_id} {}", self.always_prepared.contains_key(&spell_id));
 		let Some(entry) = self.always_prepared.get_mut(&spell_id) else { return };
 		entry.spell = Some(spell);
 	}

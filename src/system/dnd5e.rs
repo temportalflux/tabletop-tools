@@ -2,6 +2,7 @@ use self::data::character::Character;
 use super::{block, generics};
 use std::sync::Arc;
 
+pub mod change;
 pub mod components;
 pub mod data;
 pub mod evaluator;
@@ -84,14 +85,21 @@ pub fn node_registry() -> generics::Registry {
 	registry
 }
 
+pub fn change_registry() -> super::change::Registry {
+	let mut registry = super::change::Registry::default();
+	registry.register::<change::hit_points::HealOrDamage>();
+	registry
+}
+
 pub struct DnD5e {
 	blocks: block::Registry,
 	generics: Arc<generics::Registry>,
+	changes: super::change::Registry,
 }
 
 impl DnD5e {
 	pub fn new() -> Self {
-		Self { blocks: block_registry(), generics: node_registry().into() }
+		Self { blocks: block_registry(), generics: node_registry().into(), changes: change_registry() }
 	}
 }
 
@@ -110,5 +118,9 @@ impl super::System for DnD5e {
 
 	fn generics(&self) -> &Arc<generics::Registry> {
 		&self.generics
+	}
+
+	fn changes(&self) -> &super::change::Registry {
+		&self.changes
 	}
 }

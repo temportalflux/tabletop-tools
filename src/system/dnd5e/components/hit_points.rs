@@ -154,26 +154,22 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 		}
 	});
 	let max_hp = state.get_hp(HitPoint::Max);
-	let onclick_heal = state.new_dispatch({
+	let onclick_heal = state.dispatch_change({
 		let take_hp_input = take_hp_input.clone();
-		move |evt: MouseEvent, character| {
+		move |evt: MouseEvent| {
+			use crate::system::dnd5e::change::*;
 			evt.stop_propagation();
-			let Some(amt) = take_hp_input.emit(()) else {
-				return MutatorImpact::None;
-			};
-			*character.hit_points_mut() += (amt as i32, max_hp);
-			MutatorImpact::None
+			let Some(amt) = take_hp_input.emit(()) else { return None };
+			Some(hit_points::HealOrDamage(amt as i32))
 		}
 	});
-	let onclick_dmg = state.new_dispatch({
+	let onclick_dmg = state.dispatch_change({
 		let take_hp_input = take_hp_input.clone();
-		move |evt: MouseEvent, character| {
+		move |evt: MouseEvent| {
+			use crate::system::dnd5e::change::*;
 			evt.stop_propagation();
-			let Some(amt) = take_hp_input.emit(()) else {
-				return MutatorImpact::None;
-			};
-			*character.hit_points_mut() += (-1 * (amt as i32), max_hp);
-			MutatorImpact::None
+			let Some(amt) = take_hp_input.emit(()) else { return None };
+			Some(hit_points::HealOrDamage(-1 * (amt as i32)))
 		}
 	});
 
@@ -390,12 +386,14 @@ fn ModalSectionApplyChangeForm() -> Html {
 			delta.set(delta.saturating_sub(1));
 		}
 	});
-	let apply_delta = state.new_dispatch({
+	let apply_delta = state.dispatch_change({
 		let delta = delta.clone();
-		move |_: MouseEvent, character| {
-			*character.hit_points_mut() += (*delta, max_hp);
+		move |evt: MouseEvent| {
+			use crate::system::dnd5e::change::*;
+			evt.stop_propagation();
+			let amt = *delta;
 			delta.set(0);
-			MutatorImpact::None
+			Some(hit_points::HealOrDamage(amt))
 		}
 	});
 	let clear_delta = Callback::from({
