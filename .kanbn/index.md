@@ -57,10 +57,9 @@ columnSorting:
 
 ## In Progress
 
-- [migrate-spell-query-on-recompile-to-a-background-task](tasks/migrate-spell-query-on-recompile-to-a-background-task.md)
-
 ## Done
 
+- [migrate-spell-query-on-recompile-to-a-background-task](tasks/migrate-spell-query-on-recompile-to-a-background-task.md)
 - [move-autosync-status-to-sidebar-for-events-information](tasks/move-autosync-status-to-sidebar-for-events-information.md)
 - [view-scaler-re-eval](tasks/view-scaler-re-eval.md)
 - [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)

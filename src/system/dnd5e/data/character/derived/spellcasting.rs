@@ -1,15 +1,12 @@
 use crate::{
-	database::{entry::EntryInSystemWithType, Criteria, Query},
+	database::Criteria,
 	system::{
-		dnd5e::{
-			data::{
-				character::{Character, ObjectCacheProvider, Persistent},
-				spell::Spell,
-			},
-			DnD5e,
+		dnd5e::data::{
+			character::{Character, Persistent},
+			spell::Spell,
 		},
 		mutator::ReferencePath,
-		SourceId, System,
+		SourceId,
 	},
 	utility::AddAssignMap,
 };
@@ -74,6 +71,8 @@ pub struct RitualSpellCache {
 	pub spells: HashMap<SourceId, Spell>,
 	pub caster_lists: MultiMap<String, SourceId>,
 	pub casters_which_prepare_from_item: HashSet<String>,
+	pub query_criteria: Option<Criteria>,
+	pub query_criteria_by_caster: HashMap<String, Criteria>,
 }
 
 impl Spellcasting {
@@ -102,28 +101,11 @@ impl Spellcasting {
 		self.always_prepared.get_mut(&id).unwrap().spell = Some(spell.clone());
 	}
 
-	pub async fn fetch_spell_objects(
-		&mut self, provider: &ObjectCacheProvider, persistent: &Persistent,
-	) -> anyhow::Result<()> {
-		self.fetch_always_prepared(provider).await?;
-		self.ritual_spells = self.fetch_rituals(provider, persistent).await?;
-		Ok(())
-	}
+	pub fn initialize_ritual_cache(&mut self, persistent: &Persistent) {
+		self.ritual_spells = RitualSpellCache::default();
 
-	async fn fetch_always_prepared(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
-		for (id, spell_entry) in &mut self.always_prepared {
-			spell_entry.spell = provider.get_typed_entry::<Spell>(id.clone(), None).await?;
-		}
-		Ok(())
-	}
-
-	async fn fetch_rituals(
-		&self, provider: &ObjectCacheProvider, persistent: &Persistent,
-	) -> anyhow::Result<RitualSpellCache> {
 		let mut caster_query_criteria = Vec::new();
-		let mut caster_filters = HashMap::new();
-		let mut casters_which_prepare_from_item = HashSet::new();
-		for caster in self.iter_casters() {
+		for (_caster_id, caster) in &self.casters {
 			let Some(ritual_capability) = &caster.ritual_capability else {
 				continue;
 			};
@@ -131,46 +113,30 @@ impl Spellcasting {
 				continue;
 			}
 
-			let mut filter = self.get_filter(caster.name(), persistent).unwrap_or_default();
+			let Some(mut filter) = self.get_filter(caster.name(), persistent) else {
+				continue;
+			};
 			// each spell the filter matches must be a ritual
 			filter.ritual = Some(true);
 
 			let criteria = filter.as_criteria();
 			caster_query_criteria.push(criteria.clone());
-			caster_filters.insert(caster.name(), criteria);
+			self.ritual_spells.query_criteria_by_caster.insert(caster.name().clone(), criteria);
 
 			// We only store the caster filter if the caster doesnt prepare from the item.
 			// Casters skipped here are handled manually in the spells panel.
 			if caster.prepare_from_item {
-				casters_which_prepare_from_item.insert(caster.name().clone());
+				self.ritual_spells.casters_which_prepare_from_item.insert(caster.name().clone());
 			}
 		}
-		let criteria = Criteria::Any(caster_query_criteria);
+		self.ritual_spells.query_criteria = match caster_query_criteria.is_empty() {
+			true => None,
+			false => Some(crate::database::Criteria::Any(caster_query_criteria)),
+		};
+	}
 
-		let index = EntryInSystemWithType::new::<Spell>(DnD5e::id());
-		let query = Query::subset(&provider.database, Some(index)).await?;
-		let query = query.filter_by(criteria);
-		let mut query = query.parse_as_cached::<Spell>(&provider.system_depot, &provider.object_cache);
-
-		let mut ritual_spell_cache = HashMap::new();
-		let mut caster_ritual_list_cache = MultiMap::new();
-		while let Some((entry, spell)) = query.next().await {
-			let spell_id = spell.id.unversioned();
-			for (caster_id, criteria) in &caster_filters {
-				if criteria.is_relevant(&entry.metadata) {
-					// TODO: extend Query so that it checks against the object cache before reading from source
-					// provider.insert_cache(spell_id);
-					caster_ritual_list_cache.insert((*caster_id).clone(), spell_id.clone());
-				}
-			}
-			ritual_spell_cache.insert(spell_id, spell);
-		}
-
-		Ok(RitualSpellCache {
-			spells: ritual_spell_cache,
-			caster_lists: caster_ritual_list_cache,
-			casters_which_prepare_from_item,
-		})
+	pub fn ritual_cache(&self) -> &RitualSpellCache {
+		&self.ritual_spells
 	}
 
 	pub fn iter_ritual_spells(&self) -> impl Iterator<Item = (&String, &Spell, &SpellEntry)> + '_ {
@@ -271,6 +237,23 @@ impl Spellcasting {
 			}
 			(!slots.is_empty()).then(|| slots)
 		}
+	}
+
+	pub fn insert_resolved_prepared_spell(&mut self, spell: Spell) {
+		let spell_id = spell.id.unversioned();
+		log::debug!(target: "character", "Inserting spell data for {spell_id} {}", self.always_prepared.contains_key(&spell_id));
+		let Some(entry) = self.always_prepared.get_mut(&spell_id) else { return };
+		entry.spell = Some(spell);
+	}
+
+	pub fn insert_resolved_ritual_spell(&mut self, entry: crate::database::Entry, spell: Spell) {
+		let spell_id = spell.id.unversioned();
+		for (caster_id, criteria) in &self.ritual_spells.query_criteria_by_caster {
+			if criteria.is_relevant(&entry.metadata) {
+				self.ritual_spells.caster_lists.insert(caster_id.clone(), spell_id.clone());
+			}
+		}
+		self.ritual_spells.spells.insert(spell_id, spell);
 	}
 
 	pub fn prepared_spells(&self) -> &HashMap<SourceId, AlwaysPreparedSpell> {

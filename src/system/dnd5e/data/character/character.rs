@@ -140,7 +140,7 @@ impl Character {
 
 		self.inventory_mut().resolve_indirection(&provider).await?;
 		self.persistent_mut().conditions.resolve_indirection(&provider).await?;
-		self.derived.spellcasting.fetch_spell_objects(&provider, &self.character).await?;
+		self.derived.spellcasting.initialize_ritual_cache(&self.character);
 
 		Ok(())
 	}

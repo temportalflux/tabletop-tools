@@ -748,6 +748,13 @@ button.collapse_trigger.arrow_right.collapsed::after {
 	border-top: var(--bs-border-width) var(--bs-border-style) var(--theme-frame-color)!important;
 }
 
+.panel.spells > .sections {
+	flex-grow: 1;
+}
+.panel.inventory > .sections {
+	flex-grow: 1;
+}
+
 @media screen and (min-width: 1200px)
 {
 	.panel.actions > .pane {

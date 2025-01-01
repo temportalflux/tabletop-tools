@@ -1,11 +1,12 @@
 ---
 created: 2024-12-30T18:11:41.696Z
-updated: 2024-12-31T21:36:27.210Z
+updated: 2025-01-01T18:49:10.718Z
 assigned: ""
 progress: 0
 tags:
   - App
 started: 2024-12-31T21:36:27.210Z
+completed: 2025-01-01T18:49:10.719Z
 ---
 
 # Migrate spell query on recompile to a background task
