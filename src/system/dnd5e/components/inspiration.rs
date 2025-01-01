@@ -1,16 +1,13 @@
 use crate::{
-	page::characters::sheet::{CharacterHandle, MutatorImpact},
-	system::dnd5e::components::glyph::Glyph,
+	page::characters::sheet::CharacterHandle,
+	system::dnd5e::{change::ToggleInspiration, components::glyph::Glyph},
 };
 use yew::prelude::*;
 
 #[function_component]
 pub fn Inspiration() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let onclick = state.new_dispatch(|_, character| {
-		character.inspiration = !character.inspiration;
-		MutatorImpact::None
-	});
+	let onclick = state.dispatch_change(|_| Some(ToggleInspiration));
 	html! {
 		<div class="card m-1 m-xxl-0" style="width: 90px; height: 80px" {onclick}>
 			<div class="card-body text-center" style="padding: 5px 5px;">
