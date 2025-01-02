@@ -5,12 +5,12 @@ use crate::{
 			data::{
 				character::{
 					spellcasting, AbilityScores, AdditionalObjectCache, AttackBonuses, DefaultsBlock, Defenses,
-					Derived, DerivedDescription, Features, HitDice, HitPoint, HitPoints, Initiative, MaxHitPoints,
+					Derived, DerivedDescription, Features, HitDice, HitPoints, Initiative, MaxHitPoints,
 					ObjectCacheProvider, Persistent, ResourceDepot, RestResets, SavingThrows, SelectedSpells, Skills,
 					Spellcasting, StartingEquipment, Stat, UserTags,
 				},
 				item::container::Inventory,
-				proficiency, Ability, ArmorClass, Feature, OtherProficiencies,
+				proficiency, Ability, ArmorClass, Feature, HitPoint, OtherProficiencies,
 			},
 			mutator::Flag,
 			BoxedCriteria, BoxedMutator,

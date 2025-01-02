@@ -1,7 +1,7 @@
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
-		dnd5e::data::character::{Character, DeathSave},
+		dnd5e::data::{character::Character, DeathSave},
 		Change,
 	},
 };

@@ -2,7 +2,7 @@ use crate::{
 	kdl_ext::NodeContext,
 	system::{
 		dnd5e::{
-			data::character::{Character, HitPoint},
+			data::{character::Character, HitPoint},
 			mutator::AddMaxHitPoints,
 		},
 		Evaluator,

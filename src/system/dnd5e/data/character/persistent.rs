@@ -1,32 +1,18 @@
+use super::{Conditions, HitPoints, SelectedSpells, Settings};
 use crate::{
 	kdl_ext::NodeContext,
 	path_map::PathMap,
 	system::{
-		dnd5e::data::{
-			character::{Character, ObjectCacheProvider, RestEntry},
-			item::container::Inventory,
-			roll::Die,
-			Ability, Bundle, Class, Condition, Rest, Spell,
-		},
+		dnd5e::data::{character::Character, item::container::Inventory, Ability, Bundle, Class, Condition},
 		mutator::{self, ReferencePath},
 		Block, SourceId,
 	},
-	utility::{
-		selector::{self, IdPath},
-		NotInList,
-	},
 };
 use enum_map::EnumMap;
-use itertools::Itertools;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 use multimap::MultiMap;
 use serde::{Deserialize, Serialize};
-use std::{
-	collections::{BTreeMap, HashMap},
-	path::{Path, PathBuf},
-	str::FromStr,
-	sync::Arc,
-};
+use std::{path::Path, str::FromStr};
 
 mod description;
 pub use description::*;
@@ -54,6 +40,9 @@ pub struct Persistent {
 	pub notes: Notes,
 	pub attunement_slots: u32,
 }
+
+kdlize::impl_kdl_node!(Persistent, "character");
+
 impl mutator::Group for Persistent {
 	type Target = Character;
 
@@ -179,7 +168,6 @@ impl Persistent {
 	}
 }
 
-kdlize::impl_kdl_node!(Persistent, "character");
 #[derive(PartialEq, Serialize, Deserialize)]
 pub struct PersistentMetadata {
 	pub name: String,
@@ -188,6 +176,7 @@ pub struct PersistentMetadata {
 	pub classes: Vec<String>,
 	pub bundles: MultiMap<String, String>,
 }
+
 impl Block for Persistent {
 	fn to_metadata(self) -> serde_json::Value {
 		let mut level = 0;
@@ -316,412 +305,5 @@ impl AsKdl for Persistent {
 		node.child(("notes", &self.notes, OmitIfEmpty));
 
 		node
-	}
-}
-
-#[derive(Clone, Copy, PartialEq, Debug, enum_map::Enum)]
-pub enum DeathSave {
-	Success,
-	Failure,
-}
-impl DeathSave {
-	pub fn as_str(&self) -> &'static str {
-		match self {
-			Self::Failure => "failure",
-			Self::Success => "success",
-		}
-	}
-}
-impl ToString for DeathSave {
-	fn to_string(&self) -> String {
-		self.as_str().to_owned()
-	}
-}
-impl FromStr for DeathSave {
-	type Err = NotInList;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		match s {
-			"failure" => Ok(Self::Failure),
-			"success" => Ok(Self::Success),
-			_ => Err(NotInList(s.to_owned(), vec!["failure", "success"])),
-		}
-	}
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct HitPoints {
-	pub current: u32,
-	pub temp: u32,
-	pub saves: EnumMap<DeathSave, u8>,
-	pub hit_dice_selectors: EnumMap<Die, selector::Value<Character, u32>>,
-}
-impl Default for HitPoints {
-	fn default() -> Self {
-		Self {
-			current: Default::default(),
-			temp: Default::default(),
-			saves: Default::default(),
-			hit_dice_selectors: EnumMap::from_fn(|die| {
-				let id = IdPath::from(Some(format!("hit_die/{die}")));
-				selector::Value::Options(selector::ValueOptions { id, ..Default::default() })
-			}),
-		}
-	}
-}
-impl FromKdl<NodeContext> for HitPoints {
-	type Error = anyhow::Error;
-	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let current = node.query_i64_req("scope() > current", 0)? as u32;
-		let temp = node.query_i64_req("scope() > temp", 0)? as u32;
-
-		let mut saves = EnumMap::<DeathSave, u8>::default();
-		if let Some(node) = node.query_opt("scope() > saves")? {
-			for (kind, amount) in &mut saves {
-				*amount = node.get_i64_opt(&kind.to_string())?.unwrap_or(0) as u8;
-			}
-		}
-
-		Ok(Self { current, temp, saves, ..Default::default() })
-	}
-}
-impl AsKdl for HitPoints {
-	fn as_kdl(&self) -> NodeBuilder {
-		let mut node = NodeBuilder::default();
-		node.child(("current", &self.current));
-		node.child(("temp", &self.temp));
-		if self.saves != Default::default() {
-			node.child(("saves", {
-				let mut node = NodeBuilder::default();
-				for (kind, amount) in self.saves {
-					if amount <= 0 {
-						continue;
-					}
-					node.entry((kind.to_string(), amount as i64));
-				}
-				node
-			}));
-		}
-		node
-	}
-}
-impl HitPoints {
-	pub fn set_temp_hp(&mut self, value: u32) {
-		self.temp = value;
-	}
-
-	pub fn plus_hp(mut self, amount: i32, max: u32) -> Self {
-		let mut amt_abs = amount.abs() as u32;
-		let had_hp = self.current > 0;
-		match amount.signum() {
-			1 => {
-				self.current = self.current.saturating_add(amt_abs).min(max);
-			}
-			-1 if self.temp >= amt_abs => {
-				self.temp = self.temp.saturating_sub(amt_abs);
-			}
-			-1 if self.temp < amt_abs => {
-				amt_abs -= self.temp;
-				self.temp = 0;
-				self.current = self.current.saturating_sub(amt_abs);
-			}
-			_ => {}
-		}
-		if !had_hp && self.current != 0 {
-			self.saves = EnumMap::default();
-		}
-		self
-	}
-}
-impl std::ops::Add<(i32, u32)> for HitPoints {
-	type Output = Self;
-
-	fn add(self, (amount, max): (i32, u32)) -> Self::Output {
-		self.plus_hp(amount, max)
-	}
-}
-impl std::ops::AddAssign<(i32, u32)> for HitPoints {
-	fn add_assign(&mut self, rhs: (i32, u32)) {
-		*self = self.clone() + rhs;
-	}
-}
-
-#[derive(Clone)]
-pub enum IdOrIndex {
-	Id(Arc<SourceId>),
-	Index(usize),
-}
-
-#[derive(Clone, PartialEq, Default, Debug)]
-pub struct Conditions {
-	by_id: BTreeMap<SourceId, Condition>,
-	custom: Vec<Condition>,
-}
-impl Conditions {
-	pub async fn resolve_indirection(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
-		for condition in self.iter_mut() {
-			condition.resolve_indirection(provider).await?;
-		}
-		Ok(())
-	}
-
-	pub fn insert(&mut self, condition: Condition) {
-		match &condition.id {
-			Some(id) => {
-				self.by_id.insert(id.unversioned(), condition);
-			}
-			None => {
-				self.custom.push(condition);
-				self.custom.sort_by(|a, b| a.name.cmp(&b.name));
-			}
-		}
-	}
-
-	pub fn remove(&mut self, key: &IdOrIndex) {
-		match key {
-			IdOrIndex::Id(id) => {
-				self.by_id.remove(&*id);
-			}
-			IdOrIndex::Index(idx) => {
-				self.custom.remove(*idx);
-			}
-		}
-	}
-
-	pub fn iter(&self) -> impl Iterator<Item = &Condition> {
-		self.by_id.values().chain(self.custom.iter())
-	}
-
-	pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Condition> {
-		self.by_id.values_mut().chain(self.custom.iter_mut())
-	}
-
-	pub fn iter_keyed(&self) -> impl Iterator<Item = (IdOrIndex, &Condition)> {
-		let ids = self.by_id.iter().map(|(id, value)| (IdOrIndex::Id(Arc::new(id.clone())), value));
-		let indices = self.custom.iter().enumerate().map(|(idx, value)| (IdOrIndex::Index(idx), value));
-		ids.chain(indices)
-	}
-
-	pub fn contains_id(&self, id: &SourceId) -> bool {
-		self.by_id.contains_key(id)
-	}
-}
-impl mutator::Group for Conditions {
-	type Target = Character;
-
-	fn set_data_path(&self, parent: &ReferencePath) {
-		for condition in self.iter() {
-			condition.set_data_path(parent);
-		}
-	}
-
-	fn apply_mutators(&self, target: &mut Self::Target, parent: &ReferencePath) {
-		for condition in self.iter() {
-			target.apply_from(condition, parent);
-		}
-	}
-}
-
-#[derive(Clone, PartialEq, Default, Debug)]
-pub struct Settings {
-	pub currency_auto_exchange: bool,
-}
-
-impl Settings {
-	fn insert_from_kdl<'doc>(&mut self, node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<()> {
-		match node.next_str_req()? {
-			"currency_auto_exchange" => {
-				self.currency_auto_exchange = node.next_bool_req()?;
-			}
-			key => {
-				return Err(NotInList(key.into(), vec!["currency_auto_exchange"]).into());
-			}
-		}
-		Ok(())
-	}
-
-	fn export_as_kdl(&self, nodes: &mut NodeBuilder) {
-		nodes.child(
-			NodeBuilder::default()
-				.with_entry("currency_auto_exchange")
-				.with_entry(self.currency_auto_exchange)
-				.build("setting"),
-		);
-	}
-}
-
-#[derive(Clone, PartialEq, Default, Debug)]
-pub struct SelectedSpells {
-	cache_by_caster: HashMap<String, SelectedSpellsData>,
-}
-#[derive(Clone, PartialEq, Default, Debug)]
-pub struct SelectedSpellsData {
-	/// The number of rank 0 spells selected.
-	pub num_cantrips: usize,
-	/// The number of spells selected whose rank is > 0.
-	pub num_spells: usize,
-	selections: HashMap<SourceId, Spell>,
-}
-impl FromKdl<NodeContext> for SelectedSpells {
-	type Error = anyhow::Error;
-	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let mut cache_by_caster = HashMap::new();
-		for node in &mut node.query_all("scope() > caster")? {
-			let caster_name = node.next_str_req()?;
-			let mut selection_data = SelectedSpellsData::default();
-			for mut node in &mut node.query_all("scope() > spell")? {
-				let spell = Spell::from_kdl(&mut node)?;
-				selection_data.insert(spell);
-			}
-			cache_by_caster.insert(caster_name.to_owned(), selection_data);
-		}
-
-		Ok(Self { cache_by_caster })
-	}
-}
-impl AsKdl for SelectedSpells {
-	fn as_kdl(&self) -> NodeBuilder {
-		let mut node = NodeBuilder::default();
-		// Casters
-		let iter_casters = self.cache_by_caster.iter();
-		let iter_casters = iter_casters.sorted_by_key(|(name, _)| *name);
-		for (caster_name, selected_spells) in iter_casters {
-			if selected_spells.selections.is_empty() {
-				continue;
-			}
-			let mut node_caster = NodeBuilder::default();
-
-			node_caster.entry(caster_name.clone());
-
-			let iter_spells = selected_spells.selections.values();
-			let iter_spells = iter_spells.sorted_by(|a, b| a.rank.cmp(&b.rank).then(a.name.cmp(&b.name)));
-			node_caster.children(("spell", iter_spells));
-
-			node.child(node_caster.build("caster"));
-		}
-		node
-	}
-}
-impl SelectedSpells {
-	pub fn insert(&mut self, caster_id: &impl AsRef<str>, spell: Spell) {
-		let selected_spells = match self.cache_by_caster.get_mut(caster_id.as_ref()) {
-			Some(existing) => existing,
-			None => {
-				self.cache_by_caster.insert(caster_id.as_ref().to_owned(), SelectedSpellsData::default());
-				self.cache_by_caster.get_mut(caster_id.as_ref()).unwrap()
-			}
-		};
-		selected_spells.insert(spell);
-	}
-
-	pub fn remove(&mut self, caster_id: &impl AsRef<str>, spell_id: &SourceId) {
-		let Some(caster_list) = self.cache_by_caster.get_mut(caster_id.as_ref()) else {
-			return;
-		};
-		caster_list.remove(spell_id);
-	}
-
-	pub fn get(&self, caster_id: &impl AsRef<str>) -> Option<&SelectedSpellsData> {
-		self.cache_by_caster.get(caster_id.as_ref())
-	}
-
-	pub fn get_spell(&self, caster_id: &impl AsRef<str>, spell_id: &SourceId) -> Option<&Spell> {
-		let Some(data) = self.cache_by_caster.get(caster_id.as_ref()) else {
-			return None;
-		};
-		let Some(spell) = data.selections.get(spell_id) else {
-			return None;
-		};
-		Some(spell)
-	}
-
-	pub fn iter_caster_ids(&self) -> impl Iterator<Item = &String> {
-		self.cache_by_caster.keys()
-	}
-
-	pub fn iter_caster(&self, caster_id: &impl AsRef<str>) -> Option<impl Iterator<Item = &Spell>> {
-		let Some(caster) = self.cache_by_caster.get(caster_id.as_ref()) else {
-			return None;
-		};
-		Some(caster.selections.values())
-	}
-
-	pub fn iter_selected(&self) -> impl Iterator<Item = (/*caster id*/ &String, /*spell id*/ &SourceId, &Spell)> {
-		let iter = self.cache_by_caster.iter();
-		let iter = iter.map(|(caster_id, selected_per_caster)| {
-			let iter = selected_per_caster.selections.iter();
-			iter.map(|(spell_id, spell)| (&*caster_id, spell_id, spell))
-		});
-		iter.flatten()
-	}
-
-	pub fn has_selected(&self, caster_id: &impl AsRef<str>, spell_id: &SourceId) -> bool {
-		let Some(data) = self.cache_by_caster.get(caster_id.as_ref()) else {
-			return false;
-		};
-		data.selections.contains_key(spell_id)
-	}
-
-	pub fn consumed_slots_path(&self, rank: u8) -> std::path::PathBuf {
-		Path::new("SpellSlots").join(rank.to_string())
-	}
-
-	pub fn reset_on_rest(&self) -> (Rest, RestEntry) {
-		let data_paths =
-			(1..=MAX_SPELL_RANK).into_iter().map(|rank| self.consumed_slots_path(rank)).collect::<Vec<_>>();
-		let entry =
-			RestEntry { restore_amount: None, data_paths, source: PathBuf::from("Standard Spellcasting Slots") };
-		(Rest::Long, entry)
-	}
-}
-impl SelectedSpellsData {
-	fn insert(&mut self, spell: Spell) {
-		match spell.rank {
-			0 => self.num_cantrips += 1,
-			_ => self.num_spells += 1,
-		}
-		self.selections.insert(spell.id.unversioned(), spell);
-	}
-
-	fn remove(&mut self, id: &SourceId) {
-		if let Some(spell) = self.selections.remove(id) {
-			match spell.rank {
-				0 => self.num_cantrips -= 1,
-				_ => self.num_spells -= 1,
-			}
-		}
-	}
-
-	pub fn len(&self) -> usize {
-		self.selections.len()
-	}
-}
-
-#[cfg(test)]
-mod test_hit_points {
-	use super::*;
-	use crate::kdl_ext::test_utils::*;
-
-	static NODE_NAME: &str = "hit_points";
-
-	#[test]
-	fn kdl() -> anyhow::Result<()> {
-		let doc = "
-			|hit_points {
-			|    current 30
-			|    temp 5
-			|    failure_saves 1
-			|    success_saves 2
-			|}
-		";
-		let data = HitPoints {
-			current: 30,
-			temp: 5,
-			saves: enum_map::enum_map! { DeathSave::Failure => 1, DeathSave::Success => 2},
-			..Default::default()
-		};
-		assert_eq_fromkdl!(HitPoints, doc, data);
-		assert_eq_askdl!(&data, doc);
-		Ok(())
 	}
 }

@@ -3,7 +3,7 @@ use crate::{
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
 		components::UseCounterDelta,
-		data::character::{DeathSave, HitPoint},
+		data::{DeathSave, HitPoint},
 	},
 	utility::InputExt,
 };

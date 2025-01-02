@@ -1,9 +1,7 @@
-use std::str::FromStr;
-
+use crate::utility::NotInList;
 use enum_map::Enum;
 use enumset::EnumSetType;
-
-use crate::utility::NotInList;
+use std::str::FromStr;
 
 #[derive(Debug, EnumSetType, Enum)]
 pub enum HitPoint {
