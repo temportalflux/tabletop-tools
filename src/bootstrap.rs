@@ -30,13 +30,6 @@ pub fn initialize_tooltips() {
 	if let Ok(list) = doc.query_selector_all("[data-bs-toggle=\"tooltip\"]") {
 		for idx in 0..list.length() {
 			if let Some(node) = list.get(idx) {
-				/*
-				use wasm_bindgen::JsCast;
-				use web_sys::HtmlElement;
-				if let Some(element) = node.dyn_ref::<HtmlElement>() {
-					log::debug!("- {:?}", element.outer_html());
-				}
-				*/
 				Tooltip::new(node.into(), JsValue::from("{}".to_owned()));
 			}
 		}

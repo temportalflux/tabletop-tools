@@ -20,7 +20,7 @@ use crate::{
 use database::{ObjectStoreExt, TransactionExt};
 use futures_util::FutureExt;
 use itertools::Itertools;
-use kdlize::NodeId;
+use kdlize::{ext::DocumentExt2, NodeId};
 use std::{path::Path, rc::Rc};
 use yew::prelude::*;
 use yew_router::{
@@ -368,15 +368,7 @@ fn ModalCreate() -> Html {
 
 				let message = "Add new character";
 				let state = Persistent::default();
-				let content = {
-					let doc = state.export_as_kdl();
-					let doc = doc.to_string();
-					let doc = doc.replace("\\r", "");
-					let doc = doc.replace("\\n", "\n");
-					let doc = doc.replace("\\t", "\t");
-					let doc = doc.replace("    ", "\t");
-					doc
-				};
+				let content = state.export_as_kdl().to_string_unescaped();
 
 				let module_id_str = module_id.to_string();
 				let system = DnD5e::id();

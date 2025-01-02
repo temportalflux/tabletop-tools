@@ -1,10 +1,10 @@
-use super::Change;
+use super::{ArcChange, Change, Generic};
 use crate::{
 	kdl_ext::{NodeContext, NodeReader},
 	utility::BoxAny,
 };
 use kdlize::FromKdl;
-use std::any::TypeId;
+use std::{any::TypeId, sync::Arc};
 
 /// A factory which parses a block (root-level kdl node) into some concrete type, and exposes methods for calling
 /// specific functions on that type (e.g. reserializing into text).
@@ -14,7 +14,7 @@ pub struct Factory {
 	fn_from_kdl: Box<dyn Fn(&mut NodeReader<'_>) -> anyhow::Result<BoxAny> + 'static + Send + Sync>,
 }
 impl Factory {
-	pub(super) fn new<T>() -> Self
+	pub fn new<T>() -> Self
 	where
 		T: Change + FromKdl<NodeContext> + 'static + Send + Sync,
 		anyhow::Error: From<T::Error>,
@@ -23,27 +23,27 @@ impl Factory {
 			type_name: std::any::type_name::<T>(),
 			target_type_info: (TypeId::of::<T::Target>(), std::any::type_name::<T::Target>()),
 			fn_from_kdl: Box::new(|node| {
-				let impl_type = T::from_kdl(node)?;
-				Ok(Box::new(impl_type))
+				let wrapped: ArcChange<T::Target> = Arc::new(T::from_kdl(node)?);
+				Ok(Box::new(wrapped))
 			}),
 		}
 	}
 
-	pub fn from_kdl<'doc, T>(&self, node: &mut NodeReader<'doc>) -> anyhow::Result<Box<T>>
+	pub fn from_kdl<'doc, Target>(&self, node: &mut NodeReader<'doc>) -> anyhow::Result<Generic<Target>>
 	where
-		T: 'static,
+		Target: 'static,
 	{
-		if TypeId::of::<T>() != self.target_type_info.0 {
+		if TypeId::of::<Target>() != self.target_type_info.0 {
 			return Err(crate::utility::IncompatibleTypes(
 				"target",
 				self.type_name,
 				self.target_type_info.1,
-				std::any::type_name::<T>(),
+				std::any::type_name::<Target>(),
 			)
 			.into());
 		}
 		let any = (self.fn_from_kdl)(node)?;
-		let downcasted_t = any.downcast::<T>().expect("failed to unpack boxed change");
-		Ok(downcasted_t)
+		let wrapped = any.downcast::<ArcChange<Target>>().expect("failed to unpack boxed change");
+		Ok(Generic::new(*wrapped))
 	}
 }

@@ -100,14 +100,10 @@ pub fn FriendsList(FriendsListProps { module_id }: &FriendsListProps) -> Html {
 				if let Some(ModuleId::Github { user_org, repository }) = &record_id.module {
 					let message = format!("Update friends list");
 					let content = {
+						use kdlize::ext::DocumentExt2;
 						let mut doc = kdl::KdlDocument::new();
 						doc.nodes_mut().push(record.user_settings.as_kdl().build(UserSettings::id()));
-						let doc = doc.to_string();
-						let doc = doc.replace("\\r", "");
-						let doc = doc.replace("\\n", "\n");
-						let doc = doc.replace("\\t", "\t");
-						let doc = doc.replace("    ", "\t");
-						doc
+						doc.to_string_unescaped()
 					};
 					let args = github::repos::contents::update::Args {
 						repo_org: user_org,
@@ -122,8 +118,6 @@ pub fn FriendsList(FriendsListProps { module_id }: &FriendsListProps) -> Html {
 					record.version = response.version;
 					record.file_id = Some(response.file_id);
 				}
-
-				log::debug!(target: "user_settings", "{record:?}");
 
 				let transaction = database.write()?;
 				{

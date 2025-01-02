@@ -364,7 +364,6 @@ impl Mutator for Modify {
 				stats.attack_bonuses_mut().modify_spell_range(distance, query.clone(), parent);
 			}
 			Self::SpellHealing { amounts, query } => {
-				log::debug!("apply healing bonuses: {amounts:?} {query:?}");
 				stats.attack_bonuses_mut().modify_spell_healing(amounts.clone(), query.clone(), parent);
 			}
 		}

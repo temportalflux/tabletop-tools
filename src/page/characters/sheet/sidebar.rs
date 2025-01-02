@@ -41,6 +41,7 @@ pub fn Provider(props: &html::ChildrenProps) -> Html {
 
 #[function_component]
 pub fn Sidebar() -> Html {
+	let Some(state) = use_context::<crate::page::characters::sheet::CharacterHandle>() else { return html!() };
 	let Some(control) = use_context::<Control>() else { return html!() };
 
 	let collapse = Callback::from({
@@ -52,12 +53,20 @@ pub fn Sidebar() -> Html {
 		move |_: MouseEvent| control.0.dispatch(true)
 	});
 
+	let changelist_desc = state.is_loaded().then(|| html!(<div>
+		<div>{"Changes:"}</div>
+		{state.persistent().changelist().iter().rev().map(|change| {
+			html!(<div>{format!("{change:?}")}</div>)
+		}).collect::<Vec<_>>()}
+	</div>));
+
 	// TODO: Autosync when installing modules should prevent any changes to modules or character pages.
 	// There should be a fullscreen takeover of the content of those pages until syncing/installing is complete.
 	html! {
 		<div class={classes!("sidebar", control.is_shown.then(|| "active"))}>
 			<div class="content">
 				<CharacterSyncStatusDisplay />
+				{changelist_desc}
 			</div>
 			<i type="button" class="bi bi-chevron-bar-left close" onclick={collapse} />
 			<i type="button" class="bi bi-chevron-bar-right open" onclick={expand} />

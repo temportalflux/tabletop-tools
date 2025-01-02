@@ -1,4 +1,4 @@
-use super::{evaluator, generator, mutator, Evaluator, Generator, Mutator};
+use super::{change, evaluator, generator, mutator, Change, Evaluator, Generator, Mutator};
 use crate::kdl_ext::NodeContext;
 use kdlize::{FromKdl, NodeId};
 use std::collections::HashMap;
@@ -12,6 +12,7 @@ pub struct Registry {
 	evaluators: HashMap<&'static str, evaluator::Factory>,
 	generators: HashMap<&'static str, generator::Factory>,
 	generator_order: Vec<&'static str>,
+	changes: HashMap<&'static str, change::Factory>,
 }
 
 impl Default for Registry {
@@ -21,6 +22,7 @@ impl Default for Registry {
 			evaluators: HashMap::new(),
 			generators: HashMap::new(),
 			generator_order: Vec::new(),
+			changes: HashMap::new(),
 		}
 	}
 }
@@ -54,6 +56,15 @@ impl Registry {
 		self.generators.insert(G::id(), generator::Factory::new::<G>());
 	}
 
+	pub fn register_change<T>(&mut self)
+	where
+		T: Change + NodeId + FromKdl<NodeContext> + 'static + Send + Sync,
+		anyhow::Error: From<T::Error>,
+	{
+		assert!(!self.changes.contains_key(T::id()));
+		self.changes.insert(T::id(), change::Factory::new::<T>());
+	}
+
 	pub fn get_mutator_factory(&self, id: &str) -> anyhow::Result<&mutator::Factory> {
 		self.mutators.get(id).ok_or(MissingRegistration("mutator", id.to_owned()).into())
 	}
@@ -68,6 +79,10 @@ impl Registry {
 
 	pub fn get_generator_order(&self) -> &[&'static str] {
 		&self.generator_order
+	}
+
+	pub fn get_change_factory(&self, id: &str) -> anyhow::Result<&change::Factory> {
+		self.changes.get(id).ok_or(MissingRegistration("change", id.to_owned()).into())
 	}
 }
 

@@ -82,27 +82,22 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_generator::<BlockGenerator>();
 	registry.register_generator::<ItemGenerator>();
 
-	registry
-}
+	registry.register_change::<change::hit_points::DeathSaves>();
+	registry.register_change::<change::hit_points::HealOrDamage>();
+	registry.register_change::<change::hit_points::HitDice>();
+	registry.register_change::<change::hit_points::TempHP>();
 
-pub fn change_registry() -> super::change::Registry {
-	let mut registry = super::change::Registry::default();
-	registry.register::<change::hit_points::DeathSaves>();
-	registry.register::<change::hit_points::HealOrDamage>();
-	registry.register::<change::hit_points::HitDice>();
-	registry.register::<change::hit_points::TempHP>();
 	registry
 }
 
 pub struct DnD5e {
 	blocks: block::Registry,
 	generics: Arc<generics::Registry>,
-	changes: super::change::Registry,
 }
 
 impl DnD5e {
 	pub fn new() -> Self {
-		Self { blocks: block_registry(), generics: node_registry().into(), changes: change_registry() }
+		Self { blocks: block_registry(), generics: node_registry().into() }
 	}
 }
 
@@ -121,9 +116,5 @@ impl super::System for DnD5e {
 
 	fn generics(&self) -> &Arc<generics::Registry> {
 		&self.generics
-	}
-
-	fn changes(&self) -> &super::change::Registry {
-		&self.changes
 	}
 }

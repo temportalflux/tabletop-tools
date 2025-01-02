@@ -29,7 +29,6 @@ pub trait System {
 	fn get_id(&self) -> &'static str;
 	fn blocks(&self) -> &block::Registry;
 	fn generics(&self) -> &Arc<generics::Registry>;
-	fn changes(&self) -> &change::Registry;
 }
 
 pub fn system_registry() -> Registry {

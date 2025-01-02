@@ -3,6 +3,7 @@ use crate::{
 	kdl_ext::NodeContext,
 	path_map::PathMap,
 	system::{
+		change,
 		dnd5e::data::{character::Character, item::container::Inventory, Ability, Bundle, Class, Condition},
 		mutator::{self, ReferencePath},
 		Block, SourceId,
@@ -39,6 +40,13 @@ pub struct Persistent {
 	pub settings: Settings,
 	pub notes: Notes,
 	pub attunement_slots: u32,
+	// If the persistent data has had an infastructural change caused by a recently added change.
+	// This is used to determine if the contents of persistent data should be recompiled to generate fresh derived data.
+	pub has_structurally_changed: bool,
+	// The list of all changes that have been applied to the persistent data, but have not been saved to storage yet.
+	// This should be cleared/consumed when the data is saved to long-term storage.
+	// It is a queue, so changes earlier in the list were applied before changes later in the list.
+	pub changes: Vec<change::Generic<Character>>,
 }
 
 kdlize::impl_kdl_node!(Persistent, "character");
@@ -85,6 +93,28 @@ impl mutator::Group for Persistent {
 }
 
 impl Persistent {
+	pub fn new(id: SourceId) -> Self {
+		Self { id, ..Default::default() }
+	}
+
+	pub fn has_structurally_changed(&self) -> bool {
+		self.has_structurally_changed
+	}
+
+	pub fn mark_structurally_changed(&mut self) {
+		self.has_structurally_changed = true;
+	}
+
+	pub fn changelist(&self) -> &Vec<change::Generic<Character>> {
+		&self.changes
+	}
+
+	pub fn take_changelist(&mut self) -> Vec<change::Generic<Character>> {
+		let mut tmp = Vec::new();
+		std::mem::swap(&mut self.changes, &mut tmp);
+		tmp
+	}
+
 	pub fn add_class(&mut self, class: Class) {
 		self.classes.push(class);
 	}
@@ -241,6 +271,11 @@ impl FromKdl<NodeContext> for Persistent {
 
 		let notes = node.query_opt_t("scope() > notes")?.unwrap_or_default();
 
+		let mut changes = Vec::new();
+		if let Some(node) = node.query_opt("scope() > changelog")? {
+			changes = node.query_all_t("scope() > change")?;
+		}
+
 		Ok(Self {
 			id,
 			description,
@@ -256,6 +291,8 @@ impl FromKdl<NodeContext> for Persistent {
 			selected_values,
 			notes,
 			attunement_slots: 3,
+			has_structurally_changed: false,
+			changes,
 		})
 	}
 }
@@ -303,6 +340,15 @@ impl AsKdl for Persistent {
 		));
 
 		node.child(("notes", &self.notes, OmitIfEmpty));
+
+		node.child((
+			{
+				let mut node = NodeBuilder::default();
+				node.children(("change", self.changes.iter(), OmitIfEmpty));
+				node.build("changelog")
+			},
+			OmitIfEmpty,
+		));
 
 		node
 	}

@@ -408,9 +408,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 							let prev_value = persistent.get_first_selection_at::<u32>(data_path);
 							let consumed_uses = prev_value.map(Result::ok).flatten().unwrap_or_default();
 							let new_value = consumed_uses.saturating_add_signed(-delta);
-							log::debug!(target: "uses", "prev={consumed_uses} new={new_value}");
 							let new_value = (new_value > 0).then(|| new_value.to_string());
-							log::debug!(target: "uses", "{} = {:?}", data_path.display(), new_value);
 							persistent.set_selected(data_path, new_value);
 							MutatorImpact::None
 						}

@@ -63,14 +63,10 @@ impl crate::system::Generator for ItemGenerator {
 					variant.apply_to(&mut item)?;
 					// 3. reserializing into the entry (both content and metadata)
 					entry.kdl = {
+						use kdlize::ext::DocumentExt2;
 						let mut doc = kdl::KdlDocument::new();
 						doc.nodes_mut().push(item.as_kdl().build("item"));
-						let doc = doc.to_string();
-						let doc = doc.replace("\\r", "");
-						let doc = doc.replace("\\n", "\n");
-						let doc = doc.replace("\\t", "\t");
-						let doc = doc.replace("    ", "\t");
-						doc
+						doc.to_string_unescaped()
 					};
 					entry.metadata = item.to_metadata();
 					// 4. overwriting original object fields

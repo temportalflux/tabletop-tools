@@ -1,4 +1,6 @@
 pub mod autosync;
+pub mod save_to_database;
+pub mod save_to_storage;
 
 pub static USER_HOMEBREW_REPO_NAME: &str = "integro-homebrew";
 pub static MODULE_TOPIC: &str = "integro-tabletop-module";
