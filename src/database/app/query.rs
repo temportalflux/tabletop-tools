@@ -126,6 +126,7 @@ impl Query<Entry> {
 	pub fn parse_as<BlockType>(self, registry: &crate::system::Registry) -> Query<(Entry, BlockType)>
 	where
 		BlockType: crate::system::Block,
+		BlockType::Error: std::fmt::Debug,
 	{
 		let registry = registry.clone();
 		Query(
@@ -146,6 +147,7 @@ impl Query<Entry> {
 	) -> Query<(Entry, BlockType)>
 	where
 		BlockType: crate::system::Block + Clone + 'static,
+		BlockType::Error: std::fmt::Debug,
 	{
 		let registry = registry.clone();
 		let cache = cache.clone();

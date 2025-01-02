@@ -70,19 +70,28 @@ impl Entry {
 
 	pub fn parse_kdl<T: kdlize::FromKdl<crate::kdl_ext::NodeContext>>(
 		&self, node_reg: Arc<generics::Registry>,
-	) -> Option<T> {
+	) -> Option<T> where T::Error: std::fmt::Debug {
 		// Parse the entry's kdl string:
 		// kdl string to document
-		let Ok(document) = self.kdl.parse::<kdl::KdlDocument>() else {
-			return None;
+		let document = match self.kdl.parse::<kdl::KdlDocument>() {
+			Ok(doc) => doc,
+			Err(err) => {
+				log::error!(target: "query:parse_kdl", "{err:?}");
+				return None;
+			}
 		};
 		// document to first (and hopefully only) node
 		let Some(node) = document.nodes().get(0) else {
+			log::error!(target: "query:parse_kdl", "missing root node");
 			return None;
 		};
 		let ctx = crate::kdl_ext::NodeContext::new(Arc::new(self.source_id(true)), node_reg);
-		let Ok(value) = T::from_kdl(&mut crate::kdl_ext::NodeReader::new_root(node, ctx)) else {
-			return None;
+		let value = match T::from_kdl(&mut crate::kdl_ext::NodeReader::new_root(node, ctx)) {
+			Ok(value) => value,
+			Err(err) => {
+				log::error!(target: "query:parse_kdl", "{err:?}");
+				return None;
+			}
 		};
 		Some(value)
 	}

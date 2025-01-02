@@ -16,6 +16,7 @@ pub struct IndirectFetchProps<T: PartialEq> {
 pub fn IndirectFetch<T>(props: &IndirectFetchProps<T>) -> Html
 where
 	T: 'static + Clone + PartialEq + Block + Unpin,
+	T::Error: std::fmt::Debug,
 {
 	let IndirectFetchProps { indirect, to_inner } = props;
 

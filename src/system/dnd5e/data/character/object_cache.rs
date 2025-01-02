@@ -40,6 +40,7 @@ impl ObjectCacheProvider {
 	) -> Result<Option<T>, FetchError>
 	where
 		T: Block + Unpin + 'static,
+		T::Error: std::fmt::Debug,
 	{
 		let query = Query::<Entry>::single(&self.database, &key).await?;
 		let query = query.apply_opt(criteria, Query::filter_by);

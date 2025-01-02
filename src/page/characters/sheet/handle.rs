@@ -25,10 +25,11 @@ pub fn use_character(id: SourceId) -> CharacterHandle {
 		state: state.clone(),
 		pending_data: Rc::new(Mutex::new(None)),
 		state_backup: Rc::new(Mutex::new(match &*state {
-			CharacterState::Loaded(character) => Some(character.clone()),
-			CharacterState::Unloaded => None,
+			CharacterState::Loaded { character, file_id, version } => {
+				(Some(character.clone()), file_id.clone(), version.clone())
+			}
+			CharacterState::Unloaded => (None, None, None),
 		})),
-		storage_data: Rc::new(Mutex::new((None, None))),
 		pending_mutations: Rc::new(Mutex::new(Vec::new())),
 		pending_changes: Rc::new(Mutex::new(Vec::new())),
 	};
@@ -69,8 +70,7 @@ pub struct CharacterHandle {
 	pending_data: Rc<Mutex<Option<Character>>>,
 	// A copy of the authoritiative state, because the state handle only updates the
 	// shared-data after a couple of frames (not immediately in the same stack that an update is dispatched).
-	state_backup: Rc<Mutex<Option<Character>>>,
-	storage_data: Rc<Mutex<(/*file_id*/ Option<String>, /*version*/ Option<String>)>>,
+	state_backup: Rc<Mutex<(Option<Character>, /*file_id*/ Option<String>, /*version*/ Option<String>)>>,
 	pending_mutations: Rc<Mutex<Vec<FnMutator>>>,
 	pending_changes: Rc<Mutex<Vec<system::change::Generic<Character>>>>,
 }
@@ -93,11 +93,11 @@ impl AsRef<Character> for CharacterHandle {
 
 impl CharacterHandle {
 	pub fn is_loaded(&self) -> bool {
-		matches!(*self.state, CharacterState::Loaded(_))
+		matches!(*self.state, CharacterState::Loaded {..})
 	}
 
 	pub fn unload(&self) {
-		*self.state_backup.lock().unwrap() = None;
+		*self.state_backup.lock().unwrap() = (None, None, None);
 		self.state.set(CharacterState::Unloaded);
 	}
 
@@ -108,14 +108,13 @@ impl CharacterHandle {
 				let Some(system) = &id.system else {
 					return Err(CharacterInitializationError::NoSystem.into());
 				};
-				let id_str = id.to_string();
+				let id_str = id.unversioned().to_string();
 				log::info!(target: "character", "Initializing from {:?}", id_str);
 
 				// Query the database for the character and its storage file-id
 				let (file_id, version, persistent) = {
 					let query = Query::<crate::database::Entry>::single(&handle.object_cache.database, &id_str);
-					let query =
-						query.await.map_err(|_| CharacterInitializationError::CharacterMissing(id_str.clone()))?;
+					let query = query.await.map_err(FetchError::from)?;
 					let mut query = query.parse_as::<Persistent>(&handle.object_cache.system_depot);
 					match query.next().await {
 						Some((entry, typed)) => (entry.file_id, entry.version, typed),
@@ -124,7 +123,11 @@ impl CharacterHandle {
 					}
 				};
 
-				*handle.storage_data.lock().unwrap() = (file_id, version);
+				{
+					let mut state_guard = handle.state_backup.lock().unwrap();
+					state_guard.1 = file_id;
+					state_guard.2 = version;
+				}
 
 				// Query the database for any defaults needed to initialize a character
 				let default_blocks = {
@@ -163,12 +166,16 @@ pub enum MutatorImpact {
 enum CharacterState {
 	#[default]
 	Unloaded,
-	Loaded(Character),
+	Loaded {
+		character: Character,
+		file_id: Option<String>,
+		version: Option<String>,
+	},
 }
 impl CharacterState {
 	fn value(&self) -> &Character {
 		match self {
-			Self::Loaded(character) => character,
+			Self::Loaded { character, .. } => character,
 			Self::Unloaded => panic!("character not loaded"),
 		}
 	}
@@ -181,8 +188,11 @@ impl CharacterHandle {
 	}
 
 	fn set_loaded(&self, character: Character) {
-		*self.state_backup.lock().unwrap() = Some(character.clone());
-		self.state.set(CharacterState::Loaded(character));
+		let mut state_guard = self.state_backup.lock().unwrap();
+		state_guard.0 = Some(character.clone());
+		self.state.set(CharacterState::Loaded {
+			character, file_id: state_guard.1.clone(), version: state_guard.2.clone()
+		});
 	}
 
 	fn trigger_recompile(&self, requires_recompile: bool) {
@@ -200,7 +210,10 @@ impl CharacterHandle {
 					let persistent = character.persistent().clone();
 					let document = persistent.export_as_kdl().to_string_unescaped();
 					let metadata = persistent.to_metadata();
-					let (file_id, version) = (*handle.storage_data.lock().unwrap()).clone();
+					let (file_id, version) = {
+						let state_guard = handle.state_backup.lock().unwrap();
+						(state_guard.1.clone(), state_guard.2.clone())
+					};
 					let request = crate::storage::save_to_database::SaveToDatabase {
 						database: handle.object_cache.database.clone(),
 						id: character.id().clone(),
@@ -338,7 +351,7 @@ impl CharacterHandle {
 				let mut using_loaded_character = false;
 				if pending_guard.is_none() {
 					using_loaded_character = true;
-					*pending_guard = handle.state_backup.lock().unwrap().clone();
+					*pending_guard = handle.state_backup.lock().unwrap().0.clone();
 				}
 				let Some(character) = &mut *pending_guard else {
 					log::error!(target: "character",
@@ -380,7 +393,7 @@ impl CharacterHandle {
 			return;
 		}
 		// If there is no data yet loaded, we cannot process mutations right now.
-		let character = match self.state_backup.lock().unwrap().as_ref() {
+		let character = match self.state_backup.lock().unwrap().0.as_ref() {
 			Some(character) => character.clone(),
 			None => {
 				log::error!("character not loaded");
@@ -447,12 +460,16 @@ impl CharacterHandle {
 		// Takes the changelist from persistent data and returns it and the copy of persistent data,
 		// updating the loaded character state in the process.
 		// The changelist order returned in from oldest to newest change.
-		let (changelist, character) = {
+		let (character, file_id, _version) = {
 			let state_guard = self.state_backup.lock().unwrap();
-			let Some(mut character) = (*state_guard).clone() else { return };
-			let changes = character.persistent_mut().take_changelist();
-			(changes, character)
+			state_guard.clone()
 		};
+		let Some(mut character) = character else { return };
+		let Some(file_id) = file_id else {
+			log::error!(target: "character", "cannot save, missing storage file id");
+			return;
+		};
+		let changelist = character.persistent_mut().take_changelist();
 
 		let state = self.clone();
 		let database = self.object_cache.database.clone();
@@ -460,16 +477,7 @@ impl CharacterHandle {
 			use kdlize::ext::DocumentExt2;
 
 			let id = character.id().unversioned();
-
 			let is_new = !id.has_path();
-			let file_id = match is_new {
-				true => None,
-				false => match database.get::<crate::database::Entry>(&id.to_string()).await? {
-					None => None,
-					Some(entry) => entry.file_id,
-				},
-			};
-
 			let persistent = character.persistent().clone();
 			let category = persistent.get_id().to_owned();
 
@@ -491,7 +499,7 @@ impl CharacterHandle {
 			let request = crate::storage::save_to_storage::SaveToStorage {
 				storage,
 				id,
-				file_id,
+				file_id: Some(file_id),
 				commit_message,
 				commit_body,
 				document: document.clone(),

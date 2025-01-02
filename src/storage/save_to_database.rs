@@ -14,10 +14,11 @@ pub struct SaveToDatabase {
 }
 
 impl SaveToDatabase {
-	pub async fn execute(self) -> Result<(), anyhow::Error> {
+	pub async fn execute(mut self) -> Result<(), anyhow::Error> {
 		use crate::database::{Entry, Module};
 		use database::{ObjectStoreExt, TransactionExt};
 
+		self.id = self.id.unversioned();
 		let entry = Entry {
 			id: self.id.to_string(),
 			module: self.id.module.as_ref().map(ModuleId::to_string).unwrap(),

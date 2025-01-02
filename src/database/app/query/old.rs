@@ -45,6 +45,7 @@ pub struct QueryDeserialize<Output> {
 impl<Output> futures_util::stream::Stream for QueryDeserialize<Output>
 where
 	Output: FromKdl<NodeContext> + Unpin,
+	Output::Error: std::fmt::Debug,
 {
 	type Item = (Entry, Output);
 
@@ -68,6 +69,7 @@ where
 impl<Output> QueryDeserialize<Output>
 where
 	Output: FromKdl<NodeContext> + Unpin,
+	Output::Error: std::fmt::Debug,
 {
 	pub async fn first_n(mut self, limit: Option<usize>) -> Vec<(Entry, Output)> {
 		let mut items = Vec::new();

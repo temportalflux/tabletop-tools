@@ -153,6 +153,7 @@ pub fn use_query_all_typed<T>(
 ) -> UseQueryHandle<QueryAllArgs<T>, Vec<T>, database::Error>
 where
 	T: Block + Unpin + Clone + 'static,
+	T::Error: std::fmt::Debug,
 {
 	let system_depot = use_context::<system::Registry>().unwrap();
 	use_query(initial_args, move |database, input| {
@@ -186,6 +187,7 @@ pub type UseQueryDiscreteTypedHandle<T> =
 pub fn use_query_typed<T>() -> UseQueryHandle<Vec<SourceId>, (Vec<SourceId>, BTreeMap<SourceId, T>), database::Error>
 where
 	T: Block + Unpin + Clone + 'static,
+	T::Error: std::fmt::Debug,
 {
 	let system_depot = use_context::<system::Registry>().unwrap();
 	use_query(None, move |database, args: Vec<SourceId>| {
@@ -209,6 +211,7 @@ pub fn use_typed_fetch_callback<EntryContent>(_task_name: String, fn_item: Callb
 where
 	EntryContent: 'static + Block + Unpin,
 	Event: 'static,
+	EntryContent::Error: std::fmt::Debug,
 {
 	use_typed_fetch_callback_tuple(_task_name, fn_item.reform(|(output, _)| output)).reform(|id| (id, ()))
 }
@@ -220,6 +223,7 @@ pub fn use_typed_fetch_callback_tuple<Output, Arg>(
 where
 	Output: 'static + Block + Unpin,
 	Arg: 'static,
+	Output::Error: std::fmt::Debug,
 {
 	let system_depot = use_context::<system::Registry>().unwrap();
 	use_query_callback(
