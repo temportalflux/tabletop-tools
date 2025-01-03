@@ -35,4 +35,10 @@ impl Registry {
 	pub fn get(&self, system_id: &str) -> Option<&Entry> {
 		self.0.get(system_id)
 	}
+
+	pub fn make_node_context(&self, id: Arc<super::SourceId>) -> Option<crate::kdl_ext::NodeContext> {
+		let system = id.system.as_ref()?;
+		let entry = self.get(system)?;
+		Some(crate::kdl_ext::NodeContext::new(id, entry.node()))
+	}
 }

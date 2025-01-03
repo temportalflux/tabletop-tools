@@ -830,7 +830,7 @@ fn SpellModal(SpellModalProps { location, children: _ }: &SpellModalProps) -> Ht
 		return Html::default();
 	};
 
-	html! {<>
+	html! {<div class="w-100 h-100 scroll-container-y">
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">{&spell.name}</h1>
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
@@ -838,7 +838,7 @@ fn SpellModal(SpellModalProps { location, children: _ }: &SpellModalProps) -> Ht
 		<div class="modal-body">
 			{spell_content(spell, Some(entry), &state)}
 		</div>
-	</>}
+	</div>}
 }
 
 #[function_component]
@@ -885,7 +885,7 @@ fn ManageCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 	// TODO: Display modifier/atk bonus/save dc and how they are calculated for this caster.
 	// TODO: Display restriction info for the caster's spell list.
 	// TODO: Display rules for when spells can be selected or swapped out.
-	html! {<>
+	html! {<div class="w-100 h-100 scroll-container-y">
 		<div class="details spells browse">
 			<div>
 				<CollapsableCard
@@ -936,7 +936,7 @@ fn ManageCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 				<SpellCapacity name={"Spells"} num={num_spells} max={max_spells} />
 			</div>
 		</div>
-	</>}
+	</div>}
 }
 
 #[derive(Clone, PartialEq, Properties)]

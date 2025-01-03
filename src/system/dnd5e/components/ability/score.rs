@@ -292,7 +292,7 @@ pub fn ScoreBreakdown(AbilityProps { ability }: &AbilityProps) -> Html {
 #[function_component]
 fn Modal(AbilityProps { ability }: &AbilityProps) -> Html {
 	let skills = EnumSet::<Skill>::all().into_iter().filter(|skill| skill.ability() == *ability);
-	html! {<>
+	html! {<div class="w-100 h-100 scroll-container-y">
 		<h1>
 			<glyph::Ability value={*ability} />
 			<span class="ms-2">{ability.long_name()}</span>
@@ -316,5 +316,5 @@ fn Modal(AbilityProps { ability }: &AbilityProps) -> Html {
 			<h6>{title}</h6>
 			<div class="text-block" style="margin-bottom: 10px;">{content}</div>
 		</>}).collect::<Vec<_>>()}
-	</>}
+	</div>}
 }

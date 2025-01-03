@@ -90,13 +90,12 @@
 					}
 				}
 				> .card-body {
-					overflow-x: hidden;
-					overflow-y: scroll;
-					overscroll-behavior: contain;
-					height: 100px;
-
+					// used to enforce max-size of contents, even though the actual size is dictated by the card & spacer
+					height: 1px;
 					> .layer {
 						display: none;
+						width: 100%;
+						height: 100%;
 					}
 					> .layer:last-child {
 						display: block;
@@ -105,6 +104,11 @@
 			}
 		}
 	}
+}
+.scroll-container-y {
+	overflow-x: hidden;
+	overflow-y: scroll;
+	overscroll-behavior: contain;
 }
 .context-menu:not(.active) {
 	> .panel > .content-box {

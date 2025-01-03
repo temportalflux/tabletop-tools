@@ -469,7 +469,7 @@ fn BrowseStartingEquipment() -> Html {
 		}
 	});
 
-	html! {
+	html!(<div class="w-100 h-100 scroll-container-y">
 		<div class="starting-equipment">
 			<div class="actions">
 				<button type="button" onclick={submit} class={classes!(
@@ -483,7 +483,7 @@ fn BrowseStartingEquipment() -> Html {
 				{sections}
 			</div>
 		</div>
-	}
+	</div>)
 }
 
 #[derive(Clone, PartialEq, Properties)]

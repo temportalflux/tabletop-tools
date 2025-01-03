@@ -1053,3 +1053,23 @@ $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
 	margin-top: 0.5rem;
 	margin-bottom: 0.5rem;
 }
+
+.context-menu .changelog {
+	height: 100%;
+	
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+
+	> .list {
+		flex-grow: 1;
+
+		display: flex;
+		flex-direction: column;
+
+		> .commit {
+	
+		}
+	}
+
+}

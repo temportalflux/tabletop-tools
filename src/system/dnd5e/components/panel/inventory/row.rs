@@ -133,7 +133,7 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 		/>
 	};
 
-	html! {<>
+	html! {<div class="w-100 h-100 scroll-container-y">
 		<div class="d-flex flex-column" style="min-height: 200px;">
 			<ItemInfo ..item_props />
 			<span class="hr my-2" />
@@ -145,5 +145,5 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 				</button>
 			</div>
 		</div>
-	</>}
+	</div>}
 }

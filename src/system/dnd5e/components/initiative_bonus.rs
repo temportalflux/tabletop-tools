@@ -40,7 +40,7 @@ pub fn InitiativeBonus() -> Html {
 
 	let on_click = context_menu::use_control_action({
 		move |_, _context| {
-			context_menu::Action::open_root(format!("Initiative Bonus"), html! {<>
+			context_menu::Action::open_root(format!("Initiative Bonus"), html! {<div class="w-100 h-100 scroll-container-y">
 				<div class="text-center fs-5" style="width: 100%; margin-bottom: 10px;">
 					<span>{Ability::Dexterity.long_name()}{":"}</span>
 					<Tooltip tag={"span"} style={"margin-left: 5px;"} use_html={true} content={
@@ -68,7 +68,7 @@ pub fn InitiativeBonus() -> Html {
 						</div>))
 					}).collect::<Vec<_>>()}
 				</div>
-			</>})
+			</div>})
 		}
 	});
 	html! {

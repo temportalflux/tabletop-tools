@@ -32,7 +32,7 @@ pub fn ProfBonus() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let on_click = context_menu::use_control_action({
 		move |_, _context| {
-			context_menu::Action::open_root(format!("Proficiency Bonus"), html! {<>
+			context_menu::Action::open_root(format!("Proficiency Bonus"), html! {<div class="w-100 h-100 scroll-container-y">
 				<div class="text-center" style="margin-bottom: 10px;">
 					<table class="table table-compact table-striped m-0">
 						<thead>
@@ -57,7 +57,7 @@ pub fn ProfBonus() -> Html {
 				<div class="text-block">
 					{TEXT}
 				</div>
-			</>})
+			</div>})
 		}
 	});
 	html! {

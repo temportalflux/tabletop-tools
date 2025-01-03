@@ -41,10 +41,7 @@ impl SaveToStorage {
 			return Err(Error::InvalidStorage(self.id));
 		};
 
-		let path_in_repo = match &self.id.system {
-			None => self.id.path.clone(),
-			Some(system) => std::path::Path::new(&system).join(&self.id.path),
-		};
+		let path_in_repo = self.id.storage_path();
 		let message = {
 			// Commit messages in github can be separated into header and body by `\n\n`
 			let mut message = self.commit_message;

@@ -142,7 +142,7 @@ fn Modal() -> Html {
 		}
 	});
 
-	html! {<>
+	html! {<div class="w-100 h-100 scroll-container-y">
 		{add_condition_section}
 		<div>
 			{state.persistent().conditions.iter_keyed().map(|(key, condition)| {
@@ -171,7 +171,7 @@ fn Modal() -> Html {
 				}
 			}).collect::<Vec<_>>()}
 		</div>
-	</>}
+	</div>}
 }
 
 #[function_component]

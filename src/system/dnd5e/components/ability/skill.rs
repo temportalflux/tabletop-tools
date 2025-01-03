@@ -352,7 +352,7 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 		</div>),
 	};
 
-	html! {<>
+	html! {<div class="w-100 h-100 scroll-container-y">
 		<div class="text-center fs-5" style="width: 100%; margin-bottom: 10px;">
 			<span>{"Bonus:"}</span>
 			<span style="margin-left: 5px;">{match skill_modifier >= 0 { true => "+", false => "-", }}{skill_modifier.abs()}</span>
@@ -375,5 +375,5 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 
 		{roll_modifiers_table}
 		<div class="text-block">{skill.description()}</div>
-	</>}
+	</div>}
 }

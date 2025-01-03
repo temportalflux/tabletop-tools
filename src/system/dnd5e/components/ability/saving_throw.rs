@@ -244,7 +244,7 @@ fn Modal() -> Html {
 		}
 	};
 
-	html! {<>
+	html! {<div class="w-100 h-100 scroll-container-y">
 		<table class="table table-compact table-striped m-0">
 			<thead>
 				<tr class="text-center" style="color: var(--bs-heading-color);">
@@ -264,5 +264,5 @@ fn Modal() -> Html {
 		<div class="text-block" style="margin-top: 15px;">
 			{TEXT}
 		</div>
-	</>}
+	</div>}
 }

@@ -97,12 +97,12 @@ pub fn BrowseModal() -> Html {
 		</>},
 	};
 
-	html! {<>
+	html! {<div class="w-100 h-100 scroll-container-y">
 		<SearchInput on_change={on_search_changed} />
 		<div style="height: 600px">
 			{found_item_listings}
 		</div>
-	</>}
+	</div>}
 }
 
 #[derive(Clone, PartialEq, Default, Debug)]

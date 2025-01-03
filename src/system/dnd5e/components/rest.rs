@@ -130,7 +130,7 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 
 	let can_take_rest = *value != Rest::Short || hit_dice_to_consume.has_valid_input();
 
-	html! {<>
+	html! {<div class="w-100 h-100 scroll-container-y">
 		<div class="text-block">{value.description()}</div>
 		{(*value == Rest::Short).then(|| html!(
 			<HitDiceSection value={hit_dice_to_consume.clone()} />
@@ -141,7 +141,7 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 				{"Take "}{value}{" Rest"}
 			</button>
 		</div>
-	</>}
+	</div>}
 }
 
 #[derive(Clone, PartialEq, Default)]

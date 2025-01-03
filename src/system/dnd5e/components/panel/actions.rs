@@ -971,11 +971,11 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 
 	sections.push(html!(<NotesField {path} />));
 
-	html! {<>
+	html! {<div class="w-100 h-100 scroll-container-y">
 		<div class="details feature">
 			{sections}
 		</div>
-	</>}
+	</div>}
 }
 
 #[derive(Clone, PartialEq, Properties)]

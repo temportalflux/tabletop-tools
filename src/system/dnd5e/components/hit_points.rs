@@ -256,7 +256,7 @@ pub fn validate_uint_only() -> Callback<KeyboardEvent> {
 
 #[function_component]
 fn Modal() -> Html {
-	html! {<>
+	html! {<div class="w-100 h-100 scroll-container-y">
 		<ModalSectionDeathSaves />
 		<ModalSectionCurrentStats />
 		<span class="hr my-3" />
@@ -265,7 +265,7 @@ fn Modal() -> Html {
 		<ModalSectionHitDice />
 		<span class="hr my-3" />
 		<ModalSectionInfo />
-	</>}
+	</div>}
 }
 
 #[function_component]

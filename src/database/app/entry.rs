@@ -70,7 +70,10 @@ impl Entry {
 
 	pub fn parse_kdl<T: kdlize::FromKdl<crate::kdl_ext::NodeContext>>(
 		&self, node_reg: Arc<generics::Registry>,
-	) -> Option<T> where T::Error: std::fmt::Debug {
+	) -> Option<T>
+	where
+		T::Error: std::fmt::Debug,
+	{
 		// Parse the entry's kdl string:
 		// kdl string to document
 		let document = match self.kdl.parse::<kdl::KdlDocument>() {

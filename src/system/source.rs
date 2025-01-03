@@ -151,6 +151,13 @@ impl SourceId {
 		!self.path.as_os_str().is_empty()
 	}
 
+	pub fn storage_path(&self) -> PathBuf {
+		match &self.system {
+			None => self.path.clone(),
+			Some(system) => std::path::Path::new(&system).join(&self.path),
+		}
+	}
+
 	pub fn ref_id(&self) -> String {
 		let prefix = match &self.module {
 			None => String::default(),

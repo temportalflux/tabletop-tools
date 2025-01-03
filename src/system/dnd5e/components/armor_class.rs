@@ -120,11 +120,11 @@ fn Modal() -> Html {
 		}
 	};
 
-	html! {<>
+	html! {<div class="w-100 h-100 scroll-container-y">
 		{formula_table}
 		{bonuses_table}
 		<div class="text-block">
 			{TEXT}
 		</div>
-	</>}
+	</div>}
 }

@@ -119,10 +119,10 @@ fn Modal() -> Html {
 			</div>
 		});
 	}
-	html! {
+	html!(<div class="w-100 h-100 scroll-container-y">
 		<div class="details defense">
 			{sections}
 			<div class="text-block">{RULES_DESC}</div>
 		</div>
-	}
+	</div>)
 }

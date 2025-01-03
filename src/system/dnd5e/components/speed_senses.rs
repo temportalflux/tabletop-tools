@@ -142,7 +142,7 @@ fn Modal() -> Html {
 	let sense_stats =
 		state.senses().iter_compiled().map(|(name, value)| (Arc::new(name.to_owned()), value)).collect::<Vec<_>>();
 
-	html! {<>
+	html! {<div class="w-100 h-100 scroll-container-y">
 		{speed_stats.into_iter().map(|(name, value)| {
 			let operations = state.speeds().get(name.as_str());
 			let operations = operations.cloned().sorted().collect::<Vec<_>>();
@@ -165,7 +165,7 @@ fn Modal() -> Html {
 				</div>
 			}).collect::<Vec<_>>()}
 		</div>
-	</>}
+	</div>}
 }
 
 #[derive(Clone, PartialEq, Properties)]

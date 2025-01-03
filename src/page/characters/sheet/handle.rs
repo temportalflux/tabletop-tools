@@ -93,7 +93,7 @@ impl AsRef<Character> for CharacterHandle {
 
 impl CharacterHandle {
 	pub fn is_loaded(&self) -> bool {
-		matches!(*self.state, CharacterState::Loaded {..})
+		matches!(*self.state, CharacterState::Loaded { .. })
 	}
 
 	pub fn unload(&self) {
@@ -191,7 +191,9 @@ impl CharacterHandle {
 		let mut state_guard = self.state_backup.lock().unwrap();
 		state_guard.0 = Some(character.clone());
 		self.state.set(CharacterState::Loaded {
-			character, file_id: state_guard.1.clone(), version: state_guard.2.clone()
+			character,
+			file_id: state_guard.1.clone(),
+			version: state_guard.2.clone(),
 		});
 	}
 
@@ -432,8 +434,6 @@ impl CharacterHandle {
 	}
 
 	pub fn add_change(&self, change: impl system::Change<Target = Character> + 'static + Send + Sync) {
-		// TODO: Eventually changes will be stored in the description body of storage chanegs (git change body).
-		// for now we treat them as instantaneous mutations
 		{
 			let mut pending_changes = self.pending_changes.lock().unwrap();
 			pending_changes.push(system::change::Generic::from(change));

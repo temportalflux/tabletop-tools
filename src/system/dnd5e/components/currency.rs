@@ -286,7 +286,7 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 			</div>
 		}
 	};
-	html! {<>
+	html! {<div class="w-100 h-100 scroll-container-y">
 		<button
 			type="button" class="btn btn-secondary btn-sm px-1 py-0 ms-2"
 			data-bs-toggle="collapse" data-bs-target="#settingsCollapse"
@@ -297,5 +297,5 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 		{settings}
 		{balance_display}
 		{adjustment_form}
-	</>}
+	</div>}
 }
