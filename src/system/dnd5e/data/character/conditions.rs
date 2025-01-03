@@ -38,15 +38,12 @@ impl Conditions {
 		}
 	}
 
-	pub fn remove(&mut self, key: &IdOrIndex) {
-		match key {
-			IdOrIndex::Id(id) => {
-				self.by_id.remove(&*id);
-			}
-			IdOrIndex::Index(idx) => {
-				self.custom.remove(*idx);
-			}
-		}
+	pub fn remove_by_id(&mut self, id: &SourceId) {
+		self.by_id.remove(&*id);
+	}
+
+	pub fn remove_custom(&mut self, idx: usize) {
+		self.custom.remove(idx);
 	}
 
 	pub fn iter(&self) -> impl Iterator<Item = &Condition> {

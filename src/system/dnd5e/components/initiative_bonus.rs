@@ -40,35 +40,38 @@ pub fn InitiativeBonus() -> Html {
 
 	let on_click = context_menu::use_control_action({
 		move |_, _context| {
-			context_menu::Action::open_root(format!("Initiative Bonus"), html! {<div class="w-100 h-100 scroll-container-y">
-				<div class="text-center fs-5" style="width: 100%; margin-bottom: 10px;">
-					<span>{Ability::Dexterity.long_name()}{":"}</span>
-					<Tooltip tag={"span"} style={"margin-left: 5px;"} use_html={true} content={
-						crate::data::as_feature_paths_html_custom(
-							contextless_bonuses.iter(),
-							|(bonus, source)| (bonus, source.as_path()),
-							|bonus, path_str| {
-								let bonus_sign = if *bonus >= 0 { "+" } else { "-" };
-								let bonus_abs = bonus.abs();
-								format!("<div>{bonus_sign}{bonus_abs}: {path_str}</div>")
-							}
-						)
-					}>
-						{match modifier >= 0 { true => "+", false => "-", }}{modifier.abs()}
-					</Tooltip>
-				</div>
-				<div class="text-block">
-					{TEXT}
+			context_menu::Action::open_root(
+				format!("Initiative Bonus"),
+				html! {<div class="w-100 h-100 scroll-container-y">
+					<div class="text-center fs-5" style="width: 100%; margin-bottom: 10px;">
+						<span>{Ability::Dexterity.long_name()}{":"}</span>
+						<Tooltip tag={"span"} style={"margin-left: 5px;"} use_html={true} content={
+							crate::data::as_feature_paths_html_custom(
+								contextless_bonuses.iter(),
+								|(bonus, source)| (bonus, source.as_path()),
+								|bonus, path_str| {
+									let bonus_sign = if *bonus >= 0 { "+" } else { "-" };
+									let bonus_abs = bonus.abs();
+									format!("<div>{bonus_sign}{bonus_abs}: {path_str}</div>")
+								}
+							)
+						}>
+							{match modifier >= 0 { true => "+", false => "-", }}{modifier.abs()}
+						</Tooltip>
+					</div>
+					<div class="text-block">
+						{TEXT}
 
-					{context_bonuses.iter().filter_map(|(value, context, source)| {
-						let Some(source) = crate::data::as_feature_path_text(source) else { return None };
-						let sign = if *value >= 0 { "+" } else { "-" };
-						Some(html!(<div>
-							{sign}{value.abs()}{"when "}{context}{" ("}{source}{")"}
-						</div>))
-					}).collect::<Vec<_>>()}
-				</div>
-			</div>})
+						{context_bonuses.iter().filter_map(|(value, context, source)| {
+							let Some(source) = crate::data::as_feature_path_text(source) else { return None };
+							let sign = if *value >= 0 { "+" } else { "-" };
+							Some(html!(<div>
+								{sign}{value.abs()}{"when "}{context}{" ("}{source}{")"}
+							</div>))
+						}).collect::<Vec<_>>()}
+					</div>
+				</div>},
+			)
 		}
 	});
 	html! {

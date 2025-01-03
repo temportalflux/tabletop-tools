@@ -7,7 +7,10 @@ use yew::prelude::*;
 #[function_component]
 pub fn Inspiration() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let onclick = state.dispatch_change(|_| Some(ToggleInspiration));
+	let onclick = state.dispatch_change({
+		let value = state.inspiration();
+		move |_| Some(ToggleInspiration(!value))
+	});
 	html! {
 		<div class="card m-1 m-xxl-0" style="width: 90px; height: 80px" {onclick}>
 			<div class="card-body text-center" style="padding: 5px 5px;">

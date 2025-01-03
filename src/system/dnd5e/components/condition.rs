@@ -7,11 +7,11 @@ use crate::{
 	},
 	page::characters::sheet::{
 		joined::editor::{mutator_list, CollapsableCard},
-		CharacterHandle, MutatorImpact,
+		CharacterHandle,
 	},
 	system::{
 		dnd5e::{
-			data::{character::Persistent, Condition, Indirect},
+			data::{character::IdOrIndex, Condition, Indirect},
 			DnD5e,
 		},
 		SourceId,
@@ -74,10 +74,9 @@ fn Modal() -> Html {
 		);
 		let add_condition_by_id = use_typed_fetch_callback(
 			"Add Condition".into(),
-			state.new_dispatch(Box::new(move |condition: Condition, persistent: &mut Persistent| {
-				persistent.conditions.insert(condition);
-				MutatorImpact::Recompile
-			})),
+			state.dispatch_change(|condition: Condition| {
+				Some(crate::system::dnd5e::change::ApplyCondition::Add(condition))
+			}),
 		);
 		let on_add_condition = Callback::from(move |evt: web_sys::Event| {
 			let Some(value) = evt.select_value() else {
@@ -132,14 +131,12 @@ fn Modal() -> Html {
 		}
 	};
 
-	let on_remove_condition = Callback::from({
-		let state = state.clone();
-		move |key| {
-			state.dispatch(Box::new(move |persistent: &mut Persistent| {
-				persistent.conditions.remove(&key);
-				MutatorImpact::Recompile
-			}));
-		}
+	let on_remove_condition = state.dispatch_change(|key: IdOrIndex| {
+		use crate::system::dnd5e::change::ApplyCondition::*;
+		Some(match key {
+			IdOrIndex::Index(idx) => RemoveCustom(idx),
+			IdOrIndex::Id(id) => RemoveId((*id).clone()),
+		})
 	});
 
 	html! {<div class="w-100 h-100 scroll-container-y">

@@ -82,9 +82,12 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_generator::<BlockGenerator>();
 	registry.register_generator::<ItemGenerator>();
 
+	registry.register_change::<change::ApplyCondition>();
+	registry.register_change::<change::EquipItem>();
 	registry.register_change::<change::hit_points::DeathSaves>();
 	registry.register_change::<change::hit_points::HealOrDamage>();
 	registry.register_change::<change::hit_points::HitDice>();
+	registry.register_change::<change::hit_points::LevelHP>();
 	registry.register_change::<change::hit_points::TempHP>();
 	registry.register_change::<change::ToggleInspiration>();
 

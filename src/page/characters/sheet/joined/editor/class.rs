@@ -5,6 +5,7 @@ use crate::{
 	},
 	page::characters::sheet::{joined::editor::mutator_list, CharacterHandle, MutatorImpact},
 	system::dnd5e::{
+		change,
 		data::{character::Persistent, roll::Die, Class, Level},
 		DnD5e,
 	},
@@ -265,6 +266,8 @@ fn class_levels(value: &Class, state: Option<&CharacterHandle>) -> Html {
 								<span>{"Level "}{idx + 1}</span>
 								{state.is_some().then(move || html! {
 									<LevelHitPoints
+										class_name={value.name.clone()}
+										level_idx={idx}
 										data_path={level.hit_points.get_data_path()}
 										die={value.hp_die}
 									/>
@@ -353,24 +356,27 @@ fn level_body(value: &Level, state: Option<&CharacterHandle>) -> Html {
 
 #[derive(Clone, PartialEq, Properties)]
 struct LevelHitPointsProps {
+	class_name: AttrValue,
+	level_idx: usize,
 	data_path: Option<std::path::PathBuf>,
 	die: Die,
 }
 #[function_component]
-fn LevelHitPoints(LevelHitPointsProps { data_path, die }: &LevelHitPointsProps) -> Html {
+fn LevelHitPoints(LevelHitPointsProps { class_name, level_idx, data_path, die }: &LevelHitPointsProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let Some(hp_path) = data_path else {
-		return Html::default();
-	};
+	let Some(hp_path) = data_path else { return Html::default() };
 	let hp_value = state.get_first_selection_at::<u32>(hp_path).map(|res| res.ok()).flatten();
 	let mut classes = classes!("form-select", "hit-points", "py-0", "w-auto");
 	if hp_value.is_none() {
 		classes.push("missing-value");
 	}
-	let hp_path_dst = hp_path.clone();
-	let onchange = state.new_dispatch(move |evt: web_sys::Event, persistent| {
-		persistent.set_selected(&hp_path_dst, evt.select_value());
-		MutatorImpact::Recompile // TODO: this can be delayed till editor is closed i think
+	let onchange = state.dispatch_change({
+		let class_name = class_name.clone();
+		let level_idx = *level_idx;
+		move |evt: web_sys::Event| {
+			let Some(value) = evt.select_value_t::<u32>() else { return None };
+			Some(change::hit_points::LevelHP { class_name: class_name.as_str().to_owned(), level_idx, value })
+		}
 	});
 	let info_text = hp_value.is_none().then(|| {
 		html! {

@@ -171,7 +171,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 #[derive(Clone, Debug, PartialEq)]
 struct CharacterCommit {
 	commit: Option<github::queries::file_commit_history::Commit>,
-	changes: Vec<change::Generic<Character>>
+	changes: Vec<change::Generic<Character>>,
 }
 
 #[function_component]
@@ -245,7 +245,7 @@ fn Changelog() -> Html {
 		// local changes are stored in order of oldest to newest
 		changes: state.persistent().changelist().iter().rev().cloned().collect(),
 	};
-	
+
 	html!(<div class="changelog">
 		<div class="list scroll-container-y">
 			<CommitItem value={local_commit} />

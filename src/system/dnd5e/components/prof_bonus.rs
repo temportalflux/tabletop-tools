@@ -32,32 +32,35 @@ pub fn ProfBonus() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let on_click = context_menu::use_control_action({
 		move |_, _context| {
-			context_menu::Action::open_root(format!("Proficiency Bonus"), html! {<div class="w-100 h-100 scroll-container-y">
-				<div class="text-center" style="margin-bottom: 10px;">
-					<table class="table table-compact table-striped m-0">
-						<thead>
-							<tr>
-								<th scope="col">{"Charcter Level"}</th>
-								<th scope="col">{"Bonus"}</th>
-							</tr>
-						</thead>
-						<tbody>
-							{proficiency::level_map().iter().map(|(min, max, bonus)| html! {
+			context_menu::Action::open_root(
+				format!("Proficiency Bonus"),
+				html! {<div class="w-100 h-100 scroll-container-y">
+					<div class="text-center" style="margin-bottom: 10px;">
+						<table class="table table-compact table-striped m-0">
+							<thead>
 								<tr>
-									<td>{match (*min, *max) {
-										(min, Some(max)) => html! {<span>{min}{"-"}{max}</span>},
-										(min, None) => html! {<>{min}{"+"}</>},
-									}}</td>
-									<td>{"+"}{*bonus}</td>
+									<th scope="col">{"Charcter Level"}</th>
+									<th scope="col">{"Bonus"}</th>
 								</tr>
-							}).collect::<Vec<_>>()}
-						</tbody>
-					</table>
-				</div>
-				<div class="text-block">
-					{TEXT}
-				</div>
-			</div>})
+							</thead>
+							<tbody>
+								{proficiency::level_map().iter().map(|(min, max, bonus)| html! {
+									<tr>
+										<td>{match (*min, *max) {
+											(min, Some(max)) => html! {<span>{min}{"-"}{max}</span>},
+											(min, None) => html! {<>{min}{"+"}</>},
+										}}</td>
+										<td>{"+"}{*bonus}</td>
+									</tr>
+								}).collect::<Vec<_>>()}
+							</tbody>
+						</table>
+					</div>
+					<div class="text-block">
+						{TEXT}
+					</div>
+				</div>},
+			)
 		}
 	});
 	html! {

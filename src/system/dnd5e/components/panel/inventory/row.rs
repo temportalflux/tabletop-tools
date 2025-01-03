@@ -95,12 +95,9 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 		item::Kind::Equipment(_equipment) => {
 			if id_path.len() == 1 {
 				item_props.equip_status = state.inventory().get_equip_status(&id_path[0]);
-				item_props.set_equipped = Some(state.new_dispatch({
+				item_props.set_equipped = Some(state.dispatch_change({
 					let id: Uuid = id_path[0].clone();
-					move |should_be_equipped, persistent| {
-						persistent.inventory.set_equipped(&id, should_be_equipped);
-						MutatorImpact::Recompile
-					}
+					move |status| Some(crate::system::dnd5e::change::EquipItem { id, status })
 				}));
 			}
 		}
