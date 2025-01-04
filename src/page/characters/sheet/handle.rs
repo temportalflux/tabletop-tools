@@ -255,11 +255,12 @@ impl CharacterHandle {
 			// Recompile the character if it was requested or a change has resulted in a structural addition
 			// (e.g. added a bundle, equipped an item, added a feature, etc)
 			if character.persistent().has_structurally_changed() {
+				let cached_spells = character.spellcasting_mut().take_cached_spells();
 				character.clear_derived();
 				if let Err(err) = character.recompile(&self.object_cache).await {
 					log::warn!("Encountered error updating cached character objects: {err:?}");
 				}
-				// TODO: update the flag when a change structurally affects the character
+				character.spellcasting_mut().insert_cached_spells(cached_spells);
 				character.persistent_mut().mark_structurally_changed();
 			}
 
@@ -355,20 +356,29 @@ impl CharacterHandle {
 					using_loaded_character = true;
 					*pending_guard = handle.state_backup.lock().unwrap().0.clone();
 				}
+				let spell_id = spell.id.unversioned();
 				let Some(character) = &mut *pending_guard else {
 					log::error!(target: "character",
 						"missing character when receiving loaded supplemental objects. Aborting load of {}",
-						spell.id.unversioned()
+						spell_id
 					);
 					continue;
 				};
 
 				match group {
 					SpellGroup::Prepared => {
+						if let Some(entry) = character.spellcasting().prepared_spells().get(&spell_id) {
+							if entry.spell.is_some() {
+								continue;
+							}
+						}
 						character.spellcasting_mut().insert_resolved_prepared_spell(spell);
 					}
 					SpellGroup::Ritual => {
-						character.spellcasting_mut().insert_resolved_ritual_spell(entry, spell);
+						if character.spellcasting().get_ritual(&spell_id).is_some() {
+							continue;
+						}
+						character.spellcasting_mut().insert_resolved_ritual_spell(spell_id, entry.metadata, spell);
 					}
 				}
 

@@ -68,7 +68,7 @@ pub struct AlwaysPreparedSpell {
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct RitualSpellCache {
 	// Maps id to the cached spell object
-	pub spells: HashMap<SourceId, Spell>,
+	pub spells: HashMap<SourceId, (Spell, serde_json::Value)>,
 	pub caster_lists: MultiMap<String, SourceId>,
 	pub casters_which_prepare_from_item: HashSet<String>,
 	pub query_criteria: Option<Criteria>,
@@ -135,6 +135,68 @@ impl Spellcasting {
 		};
 	}
 
+	pub fn take_cached_spells(&mut self) -> HashMap<SourceId, (Option<serde_json::Value>, Vec<Spell>)> {
+		let mut spells_by_id = HashMap::default();
+		let mut insert = |spell_id, spell, metadata: Option<serde_json::Value>| {
+			match spells_by_id.get_mut(&spell_id) {
+				None => {
+					spells_by_id.insert(spell_id, (metadata, vec![spell]));
+				}
+				Some((existing_metadata, spells)) => {
+					if existing_metadata.is_none() {
+						*existing_metadata = metadata;
+					}
+					spells.push(spell);
+				}
+			}
+		};
+		for (spell_id, (spell, metadata)) in self.ritual_spells.spells.drain() {
+			insert(spell_id, spell, Some(metadata));
+		}
+		for (spell_id, entry) in &mut self.always_prepared {
+			if let Some(spell) = entry.spell.take() {
+				insert(spell_id.unversioned(), spell, None);
+			}
+		}
+		spells_by_id
+	}
+
+	pub fn insert_cached_spells(&mut self, mut cache: HashMap<SourceId, (Option<serde_json::Value>, Vec<Spell>)>) {
+		for (spell_id, entry) in &mut self.always_prepared {
+			if entry.spell.is_some() || spell_id.version.is_some() {
+				continue;
+			}
+			let Some((_metadata, spells)) = cache.get_mut(&spell_id) else { continue };
+			entry.spell = spells.pop();
+			if spells.is_empty() {
+				cache.remove(&spell_id);
+			}
+		}
+		for (spell_id, (metadata, mut spells)) in cache.into_iter() {
+			let Some(metadata) = metadata else { continue };
+			let Some(spell) = spells.pop() else { continue };
+			if !spell.casting_time.ritual {
+				continue;
+			}
+			self.insert_resolved_ritual_spell(spell_id, metadata, spell);
+		}
+	}
+
+	pub fn insert_resolved_prepared_spell(&mut self, spell: Spell) {
+		let spell_id = spell.id.unversioned();
+		let Some(entry) = self.always_prepared.get_mut(&spell_id) else { return };
+		entry.spell = Some(spell);
+	}
+
+	pub fn insert_resolved_ritual_spell(&mut self, spell_id: SourceId, metadata: serde_json::Value, spell: Spell) {
+		for (caster_id, criteria) in &self.ritual_spells.query_criteria_by_caster {
+			if criteria.is_relevant(&metadata) {
+				self.ritual_spells.caster_lists.insert(caster_id.clone(), spell_id.clone());
+			}
+		}
+		self.ritual_spells.spells.insert(spell_id, (spell, metadata));
+	}
+
 	pub fn ritual_cache(&self) -> &RitualSpellCache {
 		&self.ritual_spells
 	}
@@ -153,19 +215,18 @@ impl Spellcasting {
 		let iter = iter.map(|(caster_id, caster_spell_entry, spell_ids)| {
 			let iter = spell_ids.iter();
 			let iter = iter.filter_map(|spell_id| self.ritual_spells.spells.get(spell_id));
-			iter.map(move |spell| (caster_id, spell, caster_spell_entry))
+			iter.map(move |(spell, _metadata)| (caster_id, spell, caster_spell_entry))
 		});
 		iter.flatten()
 	}
 
 	pub fn get_ritual_spell_for(&self, caster_id: &String, spell_id: &SourceId) -> Option<&Spell> {
-		let Some(spell_ids) = self.ritual_spells.caster_lists.get_vec(caster_id) else {
-			return None;
-		};
+		let spell_ids = self.ritual_spells.caster_lists.get_vec(caster_id)?;
 		if !spell_ids.contains(spell_id) {
 			return None;
 		}
-		self.ritual_spells.spells.get(spell_id)
+		let (spell, _metadata) = self.ritual_spells.spells.get(spell_id)?;
+		Some(spell)
 	}
 
 	pub fn cantrip_capacity(&self, persistent: &Persistent) -> Vec<(usize, &Restriction)> {
@@ -239,22 +300,6 @@ impl Spellcasting {
 		}
 	}
 
-	pub fn insert_resolved_prepared_spell(&mut self, spell: Spell) {
-		let spell_id = spell.id.unversioned();
-		let Some(entry) = self.always_prepared.get_mut(&spell_id) else { return };
-		entry.spell = Some(spell);
-	}
-
-	pub fn insert_resolved_ritual_spell(&mut self, entry: crate::database::Entry, spell: Spell) {
-		let spell_id = spell.id.unversioned();
-		for (caster_id, criteria) in &self.ritual_spells.query_criteria_by_caster {
-			if criteria.is_relevant(&entry.metadata) {
-				self.ritual_spells.caster_lists.insert(caster_id.clone(), spell_id.clone());
-			}
-		}
-		self.ritual_spells.spells.insert(spell_id, spell);
-	}
-
 	pub fn prepared_spells(&self) -> &HashMap<SourceId, AlwaysPreparedSpell> {
 		&self.always_prepared
 	}
@@ -272,7 +317,8 @@ impl Spellcasting {
 	}
 
 	pub fn get_ritual(&self, spell_id: &SourceId) -> Option<&Spell> {
-		self.ritual_spells.spells.get(spell_id)
+		let (spell, _metadata) = self.ritual_spells.spells.get(spell_id)?;
+		Some(spell)
 	}
 
 	pub fn get_filter(&self, id: &str, persistent: &Persistent) -> Option<Filter> {
