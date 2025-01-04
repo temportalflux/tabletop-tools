@@ -217,15 +217,24 @@ fn Changelog() -> Html {
 
 				let mut all_commits = changelist_state.0.clone();
 				for commit in found_commits {
+					let mut changes = Vec::new();
 					if !commit.message_body.is_empty() {
-						use kdlize::ext::DocumentExt2;
-						let kdl_doc = commit.message_body.parse::<kdl::KdlDocument>()?;
-						// a list of changes that were made in this commit,
-						// ordered from newest to oldest
-						let changes = kdl_doc.query_all_t::<_, _, anyhow::Error>(&node_context, "scope() > change")?;
-
-						all_commits.push(CharacterCommit { commit: Some(commit), changes });
+						if let Ok(kdl_doc) = commit.message_body.parse::<kdl::KdlDocument>() {
+							// a list of changes that were made in this commit,
+							// ordered from newest to oldest
+							for node in kdl_doc.nodes() {
+								use kdlize::FromKdl;
+								let mut node = crate::kdl_ext::NodeReader::new_root(node, node_context.clone());
+								if node.name().value() != "change" {
+									continue;
+								}
+								if let Ok(change) = change::Generic::<Character>::from_kdl(&mut node) {
+									changes.push(change);
+								}
+							}
+						}
 					}
+					all_commits.push(CharacterCommit { commit: Some(commit), changes });
 				}
 
 				changelist_state.set((all_commits, cursor));
@@ -275,10 +284,15 @@ fn CommitItem(GeneralProp { value }: &GeneralProp<CharacterCommit>) -> Html {
 			</>},
 		}}
 		<div class="changes ms-4">
-			{value.changes.iter()
-				// changes are in order of newest to oldest
-				.map(|change| html!(<ChangeItem value={change.clone()} />))
-				.collect::<Vec<_>>()}
+			{match !value.changes.is_empty() {
+				false => html!("No app-recorded changes"),
+				true => html!(<>{
+					value.changes.iter()
+						// changes are in order of newest to oldest
+						.map(|change| html!(<ChangeItem value={change.clone()} />))
+						.collect::<Vec<_>>()
+				}</>),
+			}}
 		</div>
 	</div>)
 }
