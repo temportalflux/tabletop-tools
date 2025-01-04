@@ -29,6 +29,7 @@ pub fn block_registry() -> block::Registry {
 }
 
 pub fn node_registry() -> generics::Registry {
+	use change::{*, hit_points::*};
 	use evaluator::*;
 	use generator::*;
 	use mutator::*;
@@ -82,14 +83,19 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_generator::<BlockGenerator>();
 	registry.register_generator::<ItemGenerator>();
 
-	registry.register_change::<change::ApplyCondition>();
-	registry.register_change::<change::EquipItem>();
-	registry.register_change::<change::hit_points::DeathSaves>();
-	registry.register_change::<change::hit_points::HealOrDamage>();
-	registry.register_change::<change::hit_points::HitDice>();
-	registry.register_change::<change::hit_points::LevelHP>();
-	registry.register_change::<change::hit_points::TempHP>();
-	registry.register_change::<change::ToggleInspiration>();
+	registry.register_change::<ApplyCondition>();
+	registry.register_change::<ApplyLimitedUses>();
+	registry.register_change::<ConsumeSpellSlot>();
+	registry.register_change::<DeathSaves>();
+	registry.register_change::<EquipItem>();
+	registry.register_change::<HealOrDamage>();
+	registry.register_change::<ApplyHitDice>();
+	registry.register_change::<LevelHP>();
+	registry.register_change::<PrepareSpell>();
+	registry.register_change::<TempHP>();
+	registry.register_change::<ToggleInspiration>();
+
+	registry.register_change::<ConsumeItemSpell>();
 
 	registry
 }

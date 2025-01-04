@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
@@ -8,6 +7,7 @@ use crate::{
 	utility::NotInList,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
+use std::str::FromStr;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ApplyCondition {

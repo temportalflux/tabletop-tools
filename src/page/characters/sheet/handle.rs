@@ -524,16 +524,21 @@ impl CharacterHandle {
 				category,
 				metadata: persistent_metadata,
 				document,
-				file_id: Some(response.file_id),
-				version: response.version,
+				file_id: Some(response.file_id.clone()),
+				version: response.version.clone(),
 			};
 			request.execute().await?;
+
+			{
+				let mut state_guard = state.state_backup.lock().unwrap();
+				state_guard.1 = Some(response.file_id);
+				state_guard.2 = Some(response.version);
+			}
+			state.set_loaded(character);
 
 			if is_new {
 				navigator.push(&route);
 			}
-
-			state.set_loaded(character);
 
 			Ok(()) as Result<(), anyhow::Error>
 		});

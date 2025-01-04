@@ -101,7 +101,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 						<div class="ms-auto" />
 						{fetch_btn}
 						<button class="btn btn-success btn-xs mx-2" onclick={save_to_storage}>{"Save"}</button>
-						<button class="btn btn-theme btn-xs mx-2" onclick={open_changelog}><i class="bi bi-list-ul" /></button>
+						<button class="btn btn-outline-theme btn-xs mx-2" onclick={open_changelog}><i class="bi bi-list-ul" /></button>
 					</div>
 				</div>
 			</div>

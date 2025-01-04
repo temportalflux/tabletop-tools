@@ -77,11 +77,24 @@ impl ContainerSpell {
 }
 
 impl SpellContainer {
-	pub fn remove(&mut self, spell_id: &SourceId) {
-		self.spells.retain(|contained| match &contained.spell {
-			Indirect::Id(id) => id != spell_id,
-			Indirect::Custom(spell) => &spell.id != spell_id,
+	pub fn remove(&mut self, spell_id: &SourceId) -> usize {
+		let mut count_removed = 0usize;
+		self.spells.retain_mut(|contained| {
+			let contained_id = match &contained.spell {
+				Indirect::Id(id) => id,
+				Indirect::Custom(spell) => &spell.id,
+			}.unversioned();
+			match contained_id == *spell_id {
+				// if not matching, then retain
+				false => true,
+				// if matching, discard and update count
+				true => {
+					count_removed += 1;
+					false
+				}
+			}
 		});
+		count_removed
 	}
 
 	pub fn get_spell_entry(&self, contained: &ContainerSpell, default_values: Option<(i32, u8)>) -> Option<SpellEntry> {

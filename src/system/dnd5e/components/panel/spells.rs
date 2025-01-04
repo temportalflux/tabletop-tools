@@ -3,14 +3,14 @@ use crate::{
 	database::{entry::EntryInSystemWithType, Criteria, Database, Entry, Query},
 	page::characters::sheet::{
 		joined::editor::{CollapsableCard, DescriptionSection},
-		CharacterHandle, MutatorImpact,
+		CharacterHandle,
 	},
 	system::{
 		self,
 		dnd5e::{
 			components::{
 				glyph::{DamageTypeGlyph, Glyph},
-				panel::{get_inventory_item_mut, NotesField},
+				panel::NotesField,
 			},
 			data::{
 				character::{
@@ -30,7 +30,11 @@ use crate::{
 };
 use convert_case::{Case, Casing};
 use itertools::Itertools;
-use std::{collections::BTreeMap, path::Path, sync::Arc};
+use std::{
+	collections::BTreeMap,
+	path::{Path, PathBuf},
+	sync::Arc,
+};
 use yew::prelude::*;
 
 fn rank_suffix(rank: u8) -> &'static str {
@@ -399,19 +403,22 @@ fn spell_section<'c>(state: &'c CharacterHandle, rank: u8, section_props: Sectio
 	);
 
 	let slots = section_props.slot_count.as_ref().map(|(consumed, count)| {
-		let toggle_slot = state.new_dispatch({
-			let consumed_slots = *consumed;
-			move |evt: web_sys::Event, persistent| {
-				let Some(consume_slot) = evt.input_checked() else {
-					return MutatorImpact::None;
-				};
-				let new_consumed_slots = match consume_slot {
-					true => consumed_slots.saturating_add(1),
-					false => consumed_slots.saturating_sub(1),
-				};
-				let data_path = persistent.selected_spells.consumed_slots_path(rank);
-				persistent.set_selected_value(&data_path, new_consumed_slots.to_string());
-				MutatorImpact::None
+		// consumed ; amount of slots that have been used
+		// count ; quantity of slots at the rank
+		// available = count - consumed ; amount of slots that can yet be used
+		let toggle_slot = state.dispatch_change({
+			let available = *count - *consumed;
+			move |evt: web_sys::Event| {
+				use system::dnd5e::change::ConsumeSpellSlot;
+				let Some(consume_slot) = evt.input_checked() else { return None };
+				let slots_remaining = available.saturating_add_signed(match consume_slot {
+					true => -1,
+					false => 1,
+				});
+				// Sets the number of slots remaining at a given rank. Quantity remaining represents the total number
+				// of slots that should be available to the character after the change, and should always be
+				// <= the total number of slots at the given rank.
+				Some(ConsumeSpellSlot::manual(rank, slots_remaining))
 			}
 		});
 		html! {
@@ -470,36 +477,19 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 			CastingMethod::AtWill => (UseSpell::AtWill, None),
 			CastingMethod::Cast { can_use_slots: true, .. } if spell.rank == 0 => (UseSpell::AtWill, None),
 			CastingMethod::Cast { can_use_slots: true, .. } => {
-				let slot = UseSpell::Slot { spell_rank: spell.rank, slot_rank: section_rank, slots: slots.clone() };
+				let slot = UseSpell::Slot {
+					spell_rank: spell.rank,
+					slot_rank: section_rank,
+					slots: slots.clone(),
+					id: spell.id.unversioned(),
+				};
 				(slot, None)
 			}
 			CastingMethod::LimitedUses(limited_uses) => {
 				let data_path = limited_uses.get_uses_path(state);
 				let max_uses = limited_uses.get_max_uses(state) as u32;
 				let uses_consumed = limited_uses.get_uses_consumed(state);
-				let kind = UseSpell::Usage(Callback::from(move |state: CharacterHandle| {
-					let onclick = match &data_path {
-						None => Callback::default(),
-						Some(path) => state.new_dispatch({
-							let uses_consumed = uses_consumed;
-							let key = path.clone();
-							move |evt: MouseEvent, persistent| {
-								evt.stop_propagation();
-								let uses_consumed = uses_consumed + 1;
-								persistent.set_selected_value(&key, uses_consumed.to_string());
-								MutatorImpact::None
-							}
-						}),
-					};
-					let uses_remaining = max_uses.saturating_sub(uses_consumed);
-					let disabled = uses_consumed >= max_uses || !state.spellcasting().can_cast_any;
-					html! {
-						<button class="btn btn-theme btn-xs px-1" {onclick} {disabled}>
-							{"Use"}
-							<span class="ms-1 d-none" style="font-size: 9px; color: var(--bs-gray-600);">{format!("({uses_remaining}/{max_uses})")}</span>
-						</button>
-					}
-				}));
+				let kind = UseSpell::LimitedUse { data_path, max_uses, uses_consumed };
 				let text = html! {
 					<span class="ms-1">
 						{format!(
@@ -516,40 +506,11 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 			CastingMethod::FromContainer { item_id, consume_spell, consume_item } => {
 				let use_spell = match *consume_spell {
 					false => UseSpell::AtWill,
-					true => UseSpell::Usage(Callback::from({
-						let item_id = item_id.clone();
-						let spell_id = spell.id.unversioned();
-						let consume_item = *consume_item;
-						move |state: CharacterHandle| {
-							let onclick = state.new_dispatch({
-								let item_id = item_id.clone();
-								let spell_id = spell_id.clone();
-								move |evt: MouseEvent, persistent| {
-									evt.stop_propagation();
-									let container_is_empty = {
-										let Some(item) = get_inventory_item_mut(persistent, &item_id) else {
-											return MutatorImpact::None;
-										};
-										let Some(spell_container) = &mut item.spells else {
-											return MutatorImpact::None;
-										};
-										spell_container.remove(&spell_id);
-										spell_container.spells.is_empty()
-									};
-									if consume_item && container_is_empty {
-										persistent.inventory.remove_at_path(&item_id);
-									}
-									MutatorImpact::Recompile
-								}
-							});
-							let disabled = !state.spellcasting().can_cast_any;
-							html! {
-								<button class="btn btn-theme btn-xs px-1" {onclick} {disabled}>
-									{"Use"}
-								</button>
-							}
-						}
-					})),
+					true => UseSpell::ConsumeItemSpell {
+						item_path: item_id.clone(),
+						spell_id: spell.id.unversioned(),
+						consume_item: *consume_item,
+					},
 				};
 				(use_spell, None)
 			}
@@ -1029,19 +990,15 @@ fn SpellListAction(SpellListActionProps { caster: info, section, spell_id, rank 
 
 	let select_spell = use_typed_fetch_callback(
 		"Select Spell".into(),
-		Callback::from({
+		state.dispatch_change({
 			let caster_id = info.id.clone();
-			state.new_dispatch(move |spell: Spell, persistent| {
-				persistent.selected_spells.insert(&caster_id, spell);
-				MutatorImpact::None // TODO: maybe recompile when spells are added because of bonuses to spell attacks and other mutators?
-			})
+			move |spell: Spell| Some(system::dnd5e::change::PrepareSpell::Add { caster: caster_id.to_string(), spell })
 		}),
 	);
-	let deselect_spell = state.new_dispatch({
+	let deselect_spell = state.dispatch_change({
 		let caster_id = info.id.clone();
-		move |spell_id: SourceId, persistent| {
-			persistent.selected_spells.remove(&caster_id, &spell_id);
-			MutatorImpact::None
+		move |spell_id: SourceId| {
+			Some(system::dnd5e::change::PrepareSpell::Remove { caster: caster_id.to_string(), spell_id })
 		}
 	});
 	let onclick = Callback::from({
@@ -1561,8 +1518,9 @@ struct UseSpellButtonProps {
 enum UseSpell {
 	AtWill,
 	RitualOnly,
-	Slot { spell_rank: u8, slot_rank: u8, slots: Option<(usize, usize)> },
-	Usage(Callback<CharacterHandle, Html>),
+	Slot { spell_rank: u8, slot_rank: u8, slots: Option<(usize, usize)>, id: SourceId },
+	LimitedUse { data_path: Option<PathBuf>, max_uses: u32, uses_consumed: u32 },
+	ConsumeItemSpell { item_path: Vec<uuid::Uuid>, spell_id: SourceId, consume_item: bool },
 }
 #[function_component]
 fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
@@ -1584,20 +1542,22 @@ fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
 				{"CASTING"}<br />{"DISABLED"}
 			</div>
 		},
-		UseSpell::Slot { spell_rank, slot_rank, slots } => {
+		UseSpell::Slot { spell_rank, slot_rank, slots, id } => {
 			let can_cast = slots.as_ref().map(|(consumed, max)| consumed < max).unwrap_or(false);
-			let onclick = state.new_dispatch({
-				let consumed_slots = slots.as_ref().map(|(consumed, _max)| *consumed).unwrap_or(0);
-				let slot_rank = *slot_rank;
-				move |evt: MouseEvent, persistent| {
-					evt.stop_propagation();
-					if can_cast {
-						let data_path = persistent.selected_spells.consumed_slots_path(slot_rank);
-						persistent.set_selected_value(&data_path, (consumed_slots + 1).to_string());
+			let onclick = match slots.as_ref() {
+				Some((consumed, max)) if consumed < max => Some(state.dispatch_change({
+					let rank = *slot_rank;
+					let available = *max - *consumed;
+					let spell_id = id.clone();
+					move |evt: MouseEvent| {
+						use system::dnd5e::change::ConsumeSpellSlot;
+						evt.stop_propagation();
+						let slots_remaining = available.saturating_add_signed(-1);
+						Some(ConsumeSpellSlot::cast_spell(rank, slots_remaining, spell_id.clone()))
 					}
-					MutatorImpact::None
-				}
-			});
+				})),
+				_ => None,
+			};
 			// TODO: Revisit when spell panel rows are more fleshed out. This upcast rank span thing is not
 			// very well formated/displayed, esp with such a small text size.
 			let upcast_span = (slot_rank > spell_rank).then(|| html! {
@@ -1622,6 +1582,47 @@ fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
 				</button>
 			}
 		}
-		UseSpell::Usage(html_constructor) => html_constructor.emit(state.clone()),
+		UseSpell::LimitedUse { data_path, max_uses, uses_consumed } => {
+			let onclick = match &data_path {
+				None => None,
+				Some(path) => Some(state.dispatch_change({
+					let data_path = path.clone();
+					let uses_consumed = uses_consumed + 1;
+					move |evt: MouseEvent| {
+						evt.stop_propagation();
+						Some(system::dnd5e::change::ApplyLimitedUses(data_path.clone(), uses_consumed))
+					}
+				})),
+			};
+			let uses_remaining = max_uses.saturating_sub(*uses_consumed);
+			let disabled = uses_consumed >= max_uses || !state.spellcasting().can_cast_any;
+			html! {
+				<button class="btn btn-theme btn-xs px-1" {onclick} {disabled}>
+					{"Use"}
+					<span class="ms-1 d-none" style="font-size: 9px; color: var(--bs-gray-600);">{format!("({uses_remaining}/{max_uses})")}</span>
+				</button>
+			}
+		}
+		UseSpell::ConsumeItemSpell { item_path, spell_id, consume_item } => {
+			let onclick = state.dispatch_change({
+				let item_path = item_path.clone();
+				let spell_id = spell_id.clone();
+				let consume_item = *consume_item;
+				move |evt: MouseEvent| {
+					evt.stop_propagation();
+					Some(system::dnd5e::change::ConsumeItemSpell {
+						item_path: item_path.clone(),
+						spell_id: spell_id.clone(),
+						consume_item,
+					})
+				}
+			});
+			let disabled = !state.spellcasting().can_cast_any;
+			html! {
+				<button class="btn btn-theme btn-xs px-1" {onclick} {disabled}>
+					{"Use"}
+				</button>
+			}
+		}
 	}
 }

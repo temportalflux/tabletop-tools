@@ -515,8 +515,15 @@ fn ModalSectionHitDice() -> Html {
 				<UseCounterDelta
 					max_uses={*capacity as u32}
 					consumed_uses={consumed_uses}
-					on_apply={state.dispatch_change(move |uses_remaining_delta: i32| {
-						Some(crate::system::dnd5e::change::hit_points::HitDice { die, delta: -uses_remaining_delta })
+					on_apply={state.dispatch_change({
+						let uses_remaining = (*capacity as u32).saturating_sub(consumed_uses);
+						move |delta: i32| {
+							log::debug!("{uses_remaining} {delta}");
+							Some(crate::system::dnd5e::change::hit_points::ApplyHitDice {
+								// TODO: should delta be inverted or not?
+								die, amount_remaining: uses_remaining.saturating_add_signed(delta)
+							})
+						}
 					})}
 				/>
 			</div>
