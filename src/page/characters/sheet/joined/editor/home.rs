@@ -1,6 +1,6 @@
 use crate::{
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
-	system::dnd5e::data::character::Persistent,
+	system::dnd5e::{change::ApplyDescription, data::character::Persistent},
 	utility::InputExt,
 };
 use yew::prelude::*;
@@ -45,17 +45,9 @@ pub fn HomeTab() -> Html {
 #[function_component]
 fn NameEditor() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let onchange = Callback::from({
-		let state = state.clone();
-		move |evt: web_sys::Event| {
-			let Some(value) = evt.input_value() else {
-				return;
-			};
-			state.dispatch(Box::new(move |persistent: &mut Persistent| {
-				persistent.description.name = value;
-				MutatorImpact::None
-			}));
-		}
+	let onchange = state.dispatch_change(move |evt: web_sys::Event| {
+		let value = evt.input_value()?;
+		Some(ApplyDescription::Name(value))
 	});
 	html! {<>
 		<label for="nameInput" class="form-label">{"Name"}</label>
@@ -71,29 +63,15 @@ fn PronounEditor() -> Html {
 	static PROVIDED_OPTIONS: [(&'static str, &'static str); 3] =
 		[("she/her", "She / Her"), ("he/him", "He / Him"), ("they/them", "They / Them")];
 	let state = use_context::<CharacterHandle>().unwrap();
-	let onchange = Callback::from({
-		let state = state.clone();
-		move |evt: web_sys::Event| {
-			let Some(input) = evt.target_input() else {
-				return;
-			};
-			let is_checkbox = input.type_() == "checkbox";
-			let is_checked = input.checked();
-			let value = input.value();
-			state.dispatch(Box::new(move |persistent: &mut Persistent| {
-				match (is_checkbox, is_checked) {
-					(true, true) => {
-						persistent.description.pronouns.insert(value);
-					}
-					(true, false) => {
-						persistent.description.pronouns.remove(&value);
-					}
-					(false, _) => {
-						persistent.description.custom_pronouns = value.trim().to_owned();
-					}
-				}
-				MutatorImpact::None
-			}));
+	let onchange = state.dispatch_change(move |evt: web_sys::Event| {
+		let input = evt.target_input()?;
+		let is_checkbox = input.type_() == "checkbox";
+		let is_checked = input.checked();
+		let value = input.value();
+		match (is_checkbox, is_checked) {
+			(true, true) => Some(ApplyDescription::InsertPronoun(value)),
+			(true, false) => Some(ApplyDescription::RemovePronoun(value)),
+			(false, _) => Some(ApplyDescription::CustomPronouns(value.trim().to_owned())),
 		}
 	});
 	html! {

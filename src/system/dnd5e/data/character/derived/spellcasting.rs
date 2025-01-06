@@ -137,17 +137,15 @@ impl Spellcasting {
 
 	pub fn take_cached_spells(&mut self) -> HashMap<SourceId, (Option<serde_json::Value>, Vec<Spell>)> {
 		let mut spells_by_id = HashMap::default();
-		let mut insert = |spell_id, spell, metadata: Option<serde_json::Value>| {
-			match spells_by_id.get_mut(&spell_id) {
-				None => {
-					spells_by_id.insert(spell_id, (metadata, vec![spell]));
+		let mut insert = |spell_id, spell, metadata: Option<serde_json::Value>| match spells_by_id.get_mut(&spell_id) {
+			None => {
+				spells_by_id.insert(spell_id, (metadata, vec![spell]));
+			}
+			Some((existing_metadata, spells)) => {
+				if existing_metadata.is_none() {
+					*existing_metadata = metadata;
 				}
-				Some((existing_metadata, spells)) => {
-					if existing_metadata.is_none() {
-						*existing_metadata = metadata;
-					}
-					spells.push(spell);
-				}
+				spells.push(spell);
 			}
 		};
 		for (spell_id, (spell, metadata)) in self.ritual_spells.spells.drain() {

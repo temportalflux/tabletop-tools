@@ -1,6 +1,6 @@
 use crate::{
-	page::characters::sheet::{joined::pronouns, CharacterHandle, MutatorImpact},
-	system::dnd5e::data::character::Persistent,
+	page::characters::sheet::{joined::pronouns, CharacterHandle},
+	system::dnd5e::change::ApplyDescription,
 	utility::InputExt,
 };
 use yew::prelude::*;
@@ -153,17 +153,9 @@ pub fn AppearanceEditor() -> Html {
 
 	// TODO: Display appearance as plaintext (no editor), and switch to a textarea
 	// with fixed rows equal to (lines + 5) when double clicked, reverting back when focus is lost
-	let onchange_appearance = Callback::from({
-		let state = state.clone();
-		move |evt: web_sys::Event| {
-			let Some(value) = evt.input_value() else {
-				return;
-			};
-			state.dispatch(Box::new(move |persistent: &mut Persistent| {
-				persistent.description.appearance = value;
-				MutatorImpact::None
-			}));
-		}
+	let onchange_appearance = state.dispatch_change(move |evt: web_sys::Event| {
+		let value = evt.input_value()?;
+		Some(ApplyDescription::Appearance(value))
 	});
 
 	html! {

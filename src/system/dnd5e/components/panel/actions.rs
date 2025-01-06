@@ -10,6 +10,7 @@ use crate::{
 	},
 	system::{
 		dnd5e::{
+			change::ApplyNotes,
 			components::{
 				glyph::{DamageTypeGlyph, RollModifier},
 				UsesCounter,
@@ -986,18 +987,16 @@ pub struct NotesFieldProps {
 #[function_component]
 pub fn NotesField(NotesFieldProps { path }: &NotesFieldProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let onchange = state.new_dispatch({
+	let onchange = state.dispatch_change({
 		let path = path.clone();
-		move |evt: web_sys::Event, persistent: &mut Persistent| {
-			let Some(mut value) = evt.input_value() else {
-				return MutatorImpact::None;
-			};
-			persistent.notes.remove(&*path);
+		move |evt: web_sys::Event| {
+			let mut value = evt.input_value()?;
 			value = value.trim().to_string();
-			if !value.is_empty() {
-				persistent.notes.set(&*path, value);
-			}
-			MutatorImpact::None
+			let path = (*path).clone();
+			Some(match value.is_empty() {
+				true => ApplyNotes::Remove(path),
+				false => ApplyNotes::Insert(path, value),
+			})
 		}
 	});
 

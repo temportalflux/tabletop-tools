@@ -1,5 +1,11 @@
+mod ability_scores;
+pub use ability_scores::*;
+
 mod condition;
 pub use condition::*;
+
+mod description;
+pub use description::*;
 
 pub mod hit_points;
 
@@ -14,6 +20,9 @@ pub use item_equip::*;
 
 mod limited_uses;
 pub use limited_uses::*;
+
+mod notes;
+pub use notes::*;
 
 mod spell_consume_slot;
 pub use spell_consume_slot::*;

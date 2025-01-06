@@ -1,8 +1,9 @@
 use crate::{
-	page::characters::sheet::{CharacterHandle, MutatorImpact},
+	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
+		change::ApplyDescription,
 		components::{validate_uint_only, GeneralProp},
-		data::character::{Persistent, PersonalityKind},
+		data::character::PersonalityKind,
 	},
 	utility::InputExt,
 };
@@ -46,26 +47,18 @@ fn SizeForm() -> Html {
 	);
 	let weight_label = format!("{}kg", ((weight as f32) * 0.45359237).round() as u32);
 
-	let set_height = state.new_dispatch(|evt: web_sys::Event, persistent| {
-		let Some(value) = evt.input_value_t::<u32>() else {
-			return MutatorImpact::None;
-		};
-		persistent.description.height = value;
-		MutatorImpact::None
+	let set_height = state.dispatch_change(|evt: web_sys::Event| {
+		let value = evt.input_value_t::<u32>()?;
+		Some(ApplyDescription::Height(value))
 	});
-	let set_weight = state.new_dispatch(|evt: web_sys::Event, persistent| {
-		let Some(value) = evt.input_value_t::<u32>() else {
-			return MutatorImpact::None;
-		};
-		persistent.description.weight = value;
-		MutatorImpact::None
+	let set_weight = state.dispatch_change(|evt: web_sys::Event| {
+		let value = evt.input_value_t::<u32>()?;
+		Some(ApplyDescription::Weight(value))
 	});
-	let roll_size = state.new_dispatch(move |_, persistent| {
+	let roll_size = state.dispatch_change(move |_| {
 		let mut rng = rand::thread_rng();
 		let (height, weight) = formula.get_random(&mut rng);
-		persistent.description.height = height;
-		persistent.description.weight = weight;
-		MutatorImpact::None
+		Some(ApplyDescription::HeightWeight(height, weight))
 	});
 
 	html! {
@@ -143,10 +136,8 @@ fn PersonalitySection() -> Html {
 fn PersonalityCard(GeneralProp { value }: &GeneralProp<PersonalityKind>) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let personality_kind = *value;
-	let add_item = state.new_dispatch(move |value, persistent| {
-		persistent.description.personality[personality_kind].push(value);
-		MutatorImpact::None
-	});
+	let add_item =
+		state.dispatch_change(move |value| Some(ApplyDescription::InsertPersonality { kind: personality_kind, new: value }));
 	let info_collapse = {
 		let collapse_id = format!("{}-info", value.to_string());
 		html! {
@@ -168,34 +159,35 @@ fn PersonalityCard(GeneralProp { value }: &GeneralProp<PersonalityKind>) -> Html
 	};
 	let selected_values = {
 		let add_custom = add_item.reform(|_| String::new());
-		let delete_item = state.new_dispatch(move |idx: usize, persistent| {
-			persistent.description.personality[personality_kind].remove(idx);
-			MutatorImpact::None
-		});
-		let update_item = state.new_dispatch(move |(idx, evt): (usize, web_sys::Event), persistent| {
-			let Some(value) = evt.input_value() else {
-				return MutatorImpact::None;
-			};
-			let Some(target) = persistent.description.personality[personality_kind].get_mut(idx) else {
-				return MutatorImpact::None;
-			};
-			*target = value.trim().to_owned();
-			MutatorImpact::None
-		});
 		let selected_traits = &state.persistent().description.personality[*value];
 		html! {
 			<div class="mb-3">
 				<ul class="list-group mb-1">
 					{selected_traits.iter().enumerate().map(|(idx, value)| {
-						let on_delete = delete_item.reform(move |_| idx);
-						let onchange = update_item.reform(move |evt| (idx, evt));
+						let value = AttrValue::from(value.clone());
+						let on_delete = state.dispatch_change({
+							let value = value.clone();
+							move |_| {
+								let value = value.as_str().to_owned();
+								Some(ApplyDescription::RemovePersonality { kind: personality_kind, idx, old: value })
+							}
+						});
+						let onchange = state.dispatch_change({
+							let old = value.clone();
+							move |evt: web_sys::Event| {
+								let old = old.as_str().to_owned();
+								let value = evt.input_value()?;
+								let new = value.trim().to_owned();
+								Some(ApplyDescription::UpdatePersonality { kind: personality_kind, idx, old, new })
+							}
+						});
 						html! {
 							<li class="list-group-item d-flex p-0">
 								<input
 									type="text"
 									class="form-control border-0 w-auto flex-grow-1 px-2"
 									placeholder={format!("type your {personality_kind} here...")}
-									value={value.clone()}
+									value={value}
 									{onchange}
 								/>
 								<button type="button" class="btn btn-danger btn-xs m-2" onclick={on_delete}>
@@ -261,17 +253,9 @@ fn PersonalityCard(GeneralProp { value }: &GeneralProp<PersonalityKind>) -> Html
 #[function_component]
 pub fn AppearanceSection() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let onchange = Callback::from({
-		let state = state.clone();
-		move |evt: web_sys::Event| {
-			let Some(value) = evt.input_value() else {
-				return;
-			};
-			state.dispatch(Box::new(move |persistent: &mut Persistent| {
-				persistent.description.appearance = value;
-				MutatorImpact::None
-			}));
-		}
+	let onchange = state.dispatch_change(move |evt: web_sys::Event| {
+		let value = evt.input_value()?;
+		Some(ApplyDescription::Appearance(value))
 	});
 	html! {
 		<div class="form-floating mb-3">

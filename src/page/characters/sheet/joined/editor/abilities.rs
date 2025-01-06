@@ -1,8 +1,9 @@
 use crate::{
-	page::characters::sheet::{CharacterHandle, MutatorImpact},
+	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
+		change::ApplyAbilityScores,
 		components::{ability, validate_uint_only},
-		data::{character::Persistent, Ability},
+		data::Ability,
 	},
 	utility::InputExt,
 };
@@ -42,18 +43,11 @@ struct AbilityScoreInputProps {
 #[function_component]
 fn AbilityScoreInput(AbilityScoreInputProps { ability }: &AbilityScoreInputProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let onchange = Callback::from({
-		let state = state.clone();
+	let onchange = state.dispatch_change({
 		let ability = *ability;
 		move |evt: web_sys::Event| {
-			let Some(value) = evt.input_value_t::<u32>() else {
-				return;
-			};
-			state.dispatch(Box::new(move |persistent: &mut Persistent| {
-				persistent.ability_scores[ability] = value;
-				// only actually need ability_score_finalize to execute
-				MutatorImpact::Recompile
-			}));
+			let value = evt.input_value_t::<u32>()?;
+			Some(ApplyAbilityScores([(ability, value)].into()))
 		}
 	});
 	html! {
@@ -134,17 +128,9 @@ fn GenerationSection() -> Html {
 			method.set(GeneratorMethod::from_str(&value).ok());
 		}
 	});
-	let apply_scores = Callback::from({
-		let state = state.clone();
+	let apply_scores = state.dispatch_change({
 		let scores = scores.clone();
-		move |_| {
-			let scores = (*scores).clone();
-			state.dispatch(Box::new(move |persistent: &mut Persistent| {
-				persistent.ability_scores = scores;
-				// only actually need ability_score_finalize to execute
-				MutatorImpact::Recompile
-			}));
-		}
+		move |_| Some(ApplyAbilityScores(scores.iter().map(|(a, v)| (a, *v)).collect()))
 	});
 	use_effect_with((*method).clone(), {
 		let scores = scores.clone();

@@ -83,7 +83,8 @@ impl SpellContainer {
 			let contained_id = match &contained.spell {
 				Indirect::Id(id) => id,
 				Indirect::Custom(spell) => &spell.id,
-			}.unversioned();
+			}
+			.unversioned();
 			match contained_id == *spell_id {
 				// if not matching, then retain
 				false => true,

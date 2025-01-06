@@ -29,7 +29,7 @@ pub fn block_registry() -> block::Registry {
 }
 
 pub fn node_registry() -> generics::Registry {
-	use change::{*, hit_points::*};
+	use change::{hit_points::*, *};
 	use evaluator::*;
 	use generator::*;
 	use mutator::*;
@@ -83,8 +83,12 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_generator::<BlockGenerator>();
 	registry.register_generator::<ItemGenerator>();
 
+	registry.register_change::<ApplyAbilityScores>();
 	registry.register_change::<ApplyCondition>();
+	registry.register_change::<ApplyDescription>();
 	registry.register_change::<ApplyLimitedUses>();
+	registry.register_change::<ApplyNotes>();
+	registry.register_change::<ConsumeItemSpell>();
 	registry.register_change::<ConsumeSpellSlot>();
 	registry.register_change::<DeathSaves>();
 	registry.register_change::<EquipItem>();
@@ -94,8 +98,6 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_change::<PrepareSpell>();
 	registry.register_change::<TempHP>();
 	registry.register_change::<ToggleInspiration>();
-
-	registry.register_change::<ConsumeItemSpell>();
 
 	registry
 }
