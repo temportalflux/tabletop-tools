@@ -11,6 +11,7 @@ use crate::{
 	},
 	system::{
 		dnd5e::{
+			change::{self, inventory::ItemRef},
 			components::{
 				panel::{spell_name_and_icons, spell_overview_info, AvailableSpellList, HeaderAddon, NotesField},
 				validate_uint_only, FormulaInline, GeneralProp, UseCounterDelta, WalletInline,
@@ -57,6 +58,11 @@ pub fn get_inventory_item_hierarchy<'c>(state: &'c CharacterHandle, id_path: &It
 		}
 	}
 	items
+}
+pub fn get_item_path_names<'c>(state: &'c CharacterHandle, id_path: &ItemPath) -> Vec<String> {
+	let iter = get_inventory_item_hierarchy(&state, &id_path).into_iter();
+	let iter = iter.map(|item| item.name.clone());
+	iter.collect()
 }
 pub fn get_inventory_item<'c>(state: &'c CharacterHandle, id_path: &ItemPath) -> Option<&'c Item> {
 	let mut iter = id_path.iter();
@@ -107,24 +113,6 @@ impl ItemLocation {
 			Self::Inventory { id_path } => get_inventory_item(state, id_path),
 		}
 	}
-
-	pub fn resolve_mut<'c, T, F>(&'c self, state: &'c CharacterHandle, mutator: F) -> Option<Callback<T, ()>>
-	where
-		F: Fn(T, &mut Item) -> MutatorImpact,
-		T: 'static,
-		F: 'static,
-	{
-		match self {
-			Self::Inventory { id_path } => {
-				let id_path = id_path.clone();
-				Some(state.new_dispatch(move |input: T, persistent| {
-					let Some(item) = get_inventory_item_mut(persistent, &id_path) else { return MutatorImpact::None };
-					mutator(input, item)
-				}))
-			}
-			Self::Database { .. } => None,
-		}
-	}
 }
 
 #[derive(Clone, PartialEq, Properties, Default)]
@@ -157,15 +145,6 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 		Some(ItemLocation::Inventory { .. }) => Some(state.clone()),
 		None | Some(ItemLocation::Database { .. }) => None,
 	};
-
-	fn mutate_item<T: 'static, F>(
-		location: &Option<ItemLocation>, state: &CharacterHandle, mutator: F,
-	) -> Option<Callback<T, ()>>
-	where
-		F: Fn(T, &mut Item) -> MutatorImpact + 'static,
-	{
-		location.as_ref().map(|location| location.resolve_mut(state, mutator)).flatten()
-	}
 
 	let mut sections = Vec::new();
 	if HasProficiency::Tool(item.name.clone()).evaluate(&state) {
@@ -689,33 +668,37 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 		});
 		iter.collect::<Vec<_>>()
 	};
-	let toggle_user_tag = (!available_tags.is_empty())
-		.then(|| {
-			mutate_item(&props.location, &state, |data, item| {
-				let Some(tag) = data else { return MutatorImpact::None };
-				let is_applied = item.user_tags.contains(&tag);
-				if is_applied {
-					item.user_tags.retain(|item| item != &tag);
-				} else {
-					item.user_tags.push(tag);
+	let add_tag_button = match (available_tags.is_empty(), &props.location) {
+		// Cannot toggle the tag if there are no tags, or the item is in the database
+		(true, _) | (_, None | Some(ItemLocation::Database { .. })) => None,
+		// Can toggle the tag if the item is in the character's inventory
+		(_, Some(ItemLocation::Inventory { id_path })) => Some({
+			let onchange = state.dispatch_change({
+				let state = state.clone();
+				let item_ref = ItemRef { path: id_path.clone(), name: get_item_path_names(&state, &id_path) };
+				move |evt: web_sys::Event| {
+					let tag = evt.select_value()?;
+					let item = get_inventory_item(&state, &item_ref.path)?;
+					let is_applied = item.user_tags.contains(&tag);
+					Some(change::inventory::ApplyItemUserTag {
+						item: item_ref.clone(),
+						tag,
+						should_be_applied: !is_applied,
+					})
 				}
-				MutatorImpact::Recompile
-			})
-		})
-		.flatten();
-	let add_tag_button = toggle_user_tag.map(|toggle_user_tag| {
-		let onchange = toggle_user_tag.reform(move |evt: web_sys::Event| evt.select_value());
-		html!(<select class="form-select form-select-sm w-auto" {onchange}>
-			<option selected=true>{"Select Tag(s)"}</option>
-			{available_tags.into_iter().map(|(tag, is_applied, has_available_usages)| {
-				let can_select = is_applied || has_available_usages;
-				html!(<option value={tag.clone()} disabled={!can_select}>
-					{is_applied.then_some(html!("✅ "))}
-					{tag}
-				</option>)
-			}).collect::<Vec<_>>()}
-		</select>)
-	});
+			});
+			html!(<select class="form-select form-select-sm w-auto" {onchange}>
+				<option selected=true>{"Select Tag(s)"}</option>
+				{available_tags.into_iter().map(|(tag, is_applied, has_available_usages)| {
+					let can_select = is_applied || has_available_usages;
+					html!(<option value={tag.clone()} disabled={!can_select}>
+						{is_applied.then_some(html!("✅ "))}
+						{tag}
+					</option>)
+				}).collect::<Vec<_>>()}
+			</select>)
+		}),
+	};
 	if !item.user_tags.is_empty() || add_tag_button.is_some() {
 		sections.push(html! {
 			<div class="property user-tags">

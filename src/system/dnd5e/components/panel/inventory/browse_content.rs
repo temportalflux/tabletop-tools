@@ -8,9 +8,9 @@ use crate::{
 	page::characters::sheet::{joined::editor::CollapsableCard, CharacterHandle},
 	system::{
 		dnd5e::{
-			change,
+			change::{self, inventory::ItemRef},
 			components::{
-				panel::{get_inventory_item_hierarchy, AddItemButton, AddItemOperation, ItemInfo},
+				panel::{get_item_path_names, AddItemButton, AddItemOperation, ItemInfo},
 				validate_uint_only, GeneralProp, WalletInline,
 			},
 			data::{
@@ -175,14 +175,7 @@ fn BrowsedItemCard(props: &GeneralProp<ItemLocation>) -> Html {
 		move |container: Option<ItemPath>| {
 			let container = match container {
 				None => None,
-				Some(path) => {
-					let names = {
-						let iter = get_inventory_item_hierarchy(&state, &path).into_iter();
-						let iter = iter.map(|item| item.name.clone());
-						iter.collect()
-					};
-					Some((path, names))
-				}
+				Some(path) => Some(ItemRef { name: get_item_path_names(&state, &path), path }),
 			};
 			Some(change::inventory::AddItem { item: item.clone(), container })
 		}
@@ -239,14 +232,7 @@ fn AddItemActions(AddItemActionsProps { id, batch_size, worth }: &AddItemActions
 				let (item, (amount, cost, container)) = args;
 				let container = match container {
 					None => None,
-					Some(path) => {
-						let names = {
-							let iter = get_inventory_item_hierarchy(&state, &path).into_iter();
-							let iter = iter.map(|item| item.name.clone());
-							iter.collect()
-						};
-						Some((path, names))
-					}
+					Some(path) => Some(ItemRef { name: get_item_path_names(&state, &path), path }),
 				};
 				Some(change::inventory::PurchaseItem { item, amount, cost, container })
 			}

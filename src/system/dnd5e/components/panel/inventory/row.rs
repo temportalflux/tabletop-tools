@@ -3,9 +3,12 @@ use crate::{
 	components::context_menu,
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::dnd5e::{
-		change::{self, inventory::EquipItem},
+		change::{
+			self,
+			inventory::{EquipItem, ItemRef},
+		},
 		components::panel::{
-			get_inventory_item, get_inventory_item_hierarchy, inventory::equip_toggle::ItemRowEquipBox, AddItemButton,
+			get_inventory_item, get_item_path_names, inventory::equip_toggle::ItemRowEquipBox, AddItemButton,
 			AddItemOperation, ItemBodyProps, ItemInfo, ItemLocation,
 		},
 		data::item::{self, container::item::ItemPath, Item},
@@ -61,16 +64,11 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 	};
 
 	let on_delete = state.dispatch_change({
-		let id_path = id_path.clone();
-		let item_name_path = {
-			let iter = get_inventory_item_hierarchy(&state, &id_path).into_iter();
-			let iter = iter.map(|item| item.name.clone());
-			iter.collect::<Vec<_>>()
-		};
+		let item_ref = ItemRef { path: id_path.clone(), name: get_item_path_names(&state, &id_path) };
 		let close_modal = close_modal.clone();
 		move |_| {
 			close_modal.emit(());
-			Some(change::inventory::RemoveItem { path: id_path.clone(), name: item_name_path.clone() })
+			Some(change::inventory::RemoveItem(item_ref.clone()))
 		}
 	});
 	let mut item_props =
@@ -93,9 +91,8 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 			if let Some(id) = id_path.as_single() {
 				item_props.equip_status = state.inventory().get_equip_status(&id);
 				let name = item.name.clone();
-				item_props.set_equipped = Some(state.dispatch_change(move |status| {
-					Some(EquipItem { id, name: name.clone(), status })
-				}));
+				item_props.set_equipped =
+					Some(state.dispatch_change(move |status| Some(EquipItem { id, name: name.clone(), status })));
 			}
 		}
 	}
@@ -110,33 +107,24 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 				source_container: id_path.container(),
 			}}
 			on_click={Callback::from({
-				let close_modal = close_modal.clone();
-				let item_path = id_path.clone();
-				let item_name_path = {
-					let iter = get_inventory_item_hierarchy(&state, &id_path).into_iter();
-					let iter = iter.map(|item| item.name.clone());
-					iter.collect::<Vec<_>>()
-				};
 				let mutate = state.dispatch_change({
 					let state = state.clone();
+					let item_ref = ItemRef{ path: id_path.clone(), name: get_item_path_names(&state, &id_path) };
 					move |dest_path: Option<ItemPath>| {
 						let destination_container = match dest_path {
 							None => None,
 							Some(path) => {
-								let container_names = {
-									let iter = get_inventory_item_hierarchy(&state, &path).into_iter();
-									let iter = iter.map(|item| item.name.clone());
-									iter.collect::<Vec<_>>()
-								};
-								Some((path, container_names))
+								let container_names = get_item_path_names(&state, &path);
+								Some(ItemRef{ path, name: container_names })
 							}
 						};
 						Some(change::inventory::MoveItem {
-							item: (item_path.clone(), item_name_path.clone()),
+							item: item_ref.clone(),
 							destination_container,
 						})
 					}
 				});
+				let close_modal = close_modal.clone();
 				move |dst_id: Option<ItemPath>| {
 					mutate.emit(dst_id);
 					close_modal.emit(());

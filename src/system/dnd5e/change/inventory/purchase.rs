@@ -1,10 +1,11 @@
+use super::ItemRef;
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
 		dnd5e::data::{
 			character::Character,
 			currency::Wallet,
-			item::{self, container::item::ItemPath, Item},
+			item::{self, Item},
 		},
 		Change,
 	},
@@ -16,7 +17,7 @@ pub struct PurchaseItem {
 	pub item: Item,
 	pub amount: usize,
 	pub cost: Wallet,
-	pub container: Option<(ItemPath, Vec<String>)>,
+	pub container: Option<ItemRef>,
 }
 
 crate::impl_trait_eq!(PurchaseItem);
@@ -44,7 +45,7 @@ impl Change for PurchaseItem {
 			character.persistent_mut().inventory.wallet_mut().remove(self.cost, auto_exchange);
 		}
 
-		let container = self.container.as_ref().map(|(id, _)| id);
+		let container = self.container.as_ref().map(|item| &item.path);
 		for item in items {
 			character.persistent_mut().inventory.insert_to(item, container);
 		}
@@ -62,18 +63,7 @@ impl FromKdl<NodeContext> for PurchaseItem {
 		let amount = node.get_i64_req("amount")? as usize;
 		let cost = node.query_opt_t::<Wallet>("scope() > wallet")?.unwrap_or_default();
 		let item = node.query_req_t("scope() > item")?;
-		let container = match node.query_opt("scope() > dest")? {
-			None => None,
-			Some(mut node) => {
-				let path = node.next_str_req_t()?;
-				let names = {
-					let iter = node.next_str_req()?;
-					let iter = iter.split("/").map(str::to_owned);
-					iter.collect()
-				};
-				Some((path, names))
-			}
-		};
+		let container = node.query_opt_t("scope() > dest")?;
 		Ok(Self { item, amount, cost, container })
 	}
 }
@@ -84,9 +74,7 @@ impl AsKdl for PurchaseItem {
 		node.entry(("amount", self.amount as i64));
 		node.child(("cost", &self.cost, OmitIfEmpty));
 		node.child(("item", &self.item));
-		if let Some((path, name)) = &self.container {
-			node.child(("dest", NodeBuilder::default().with_entry(path.to_string()).with_entry(name.join("/"))))
-		}
+		node.child(("dest", &self.container, OmitIfEmpty));
 		node
 	}
 }

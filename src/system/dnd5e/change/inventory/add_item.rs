@@ -1,18 +1,16 @@
+use super::ItemRef;
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
-		dnd5e::data::{
-			character::Character,
-			item::{container::item::ItemPath, Item},
-		},
+		dnd5e::data::{character::Character, item::Item},
 		Change,
 	},
 };
-use kdlize::{AsKdl, FromKdl, NodeBuilder};
+use kdlize::{AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddItem {
-	pub container: Option<(ItemPath, Vec<String>)>,
+	pub container: Option<ItemRef>,
 	pub item: Item,
 }
 
@@ -23,7 +21,7 @@ impl Change for AddItem {
 	type Target = Character;
 
 	fn apply_to(&self, character: &mut Self::Target) {
-		let container = self.container.as_ref().map(|(id, _)| id);
+		let container = self.container.as_ref().map(|item| &item.path);
 		character.persistent_mut().inventory.insert_to(self.item.clone(), container);
 
 		// need items to have their data paths set up
@@ -37,18 +35,7 @@ impl FromKdl<NodeContext> for AddItem {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let item = node.query_req_t("scope() > item")?;
-		let container = match node.query_opt("scope() > dest")? {
-			None => None,
-			Some(mut node) => {
-				let path = node.next_str_req_t()?;
-				let names = {
-					let iter = node.next_str_req()?;
-					let iter = iter.split("/").map(str::to_owned);
-					iter.collect()
-				};
-				Some((path, names))
-			}
-		};
+		let container = node.query_opt_t("scope() > dest")?;
 		Ok(Self { item, container })
 	}
 }
@@ -57,9 +44,7 @@ impl AsKdl for AddItem {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		node.child(("item", &self.item));
-		if let Some((path, name)) = &self.container {
-			node.child(("dest", NodeBuilder::default().with_entry(path.to_string()).with_entry(name.join("/"))))
-		}
+		node.child(("dest", &self.container, OmitIfEmpty));
 		node
 	}
 }
