@@ -100,12 +100,14 @@ pub fn get_inventory_item_mut<'c>(persistent: &'c mut Persistent, id_path: &Item
 
 #[derive(Clone, PartialEq)]
 pub enum ItemLocation {
+	Explicit { item: std::rc::Rc<Item> },
 	Database { query: UseQueryAllHandle<Item>, index: usize },
 	Inventory { id_path: ItemPath },
 }
 impl ItemLocation {
 	pub fn resolve<'c>(&'c self, state: &'c CharacterHandle) -> Option<&'c Item> {
 		match self {
+			Self::Explicit { item } => Some(&*item),
 			Self::Database { query, index } => match query.status() {
 				QueryStatus::Success(data) => data.get(*index),
 				_ => None,
@@ -115,12 +117,9 @@ impl ItemLocation {
 	}
 }
 
-#[derive(Clone, PartialEq, Properties, Default)]
+#[derive(Clone, PartialEq, Properties)]
 pub struct ItemBodyProps {
-	#[prop_or_default]
-	pub location: Option<ItemLocation>,
-	#[prop_or_default]
-	pub item: Option<std::rc::Rc<Item>>,
+	pub location: ItemLocation,
 	#[prop_or_default]
 	pub on_quantity_changed: Option<Callback<u32>>,
 	#[prop_or_default]
@@ -133,17 +132,10 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let context_menu = use_context::<context_menu::Control>().unwrap();
 
-	let item_opt = match &props.location {
-		None => props.item.as_ref().map(|item| &**item),
-		Some(location) => location.resolve(&state),
-	};
-	let item = match item_opt {
-		Some(item) => item,
-		None => return Html::default(),
-	};
+	let Some(item) = props.location.resolve(&state) else { return Html::default() };
 	let state_with_inventory = match &props.location {
-		Some(ItemLocation::Inventory { .. }) => Some(state.clone()),
-		None | Some(ItemLocation::Database { .. }) => None,
+		ItemLocation::Inventory { .. } => Some(state.clone()),
+		_ => None,
 	};
 
 	let mut sections = Vec::new();
@@ -396,7 +388,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 				}
 			}
 			if let Some(resource) = &equipment.charges {
-				if matches!(&props.location, Some(ItemLocation::Inventory { .. })) {
+				if matches!(&props.location, ItemLocation::Inventory { .. }) {
 					let max_uses = resource.get_capacity(&*state) as u32;
 					let consumed_uses = resource.get_uses_consumed(&*state);
 					let on_apply = state.new_dispatch({
@@ -594,9 +586,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 		}
 
 		let browse = match &props.location {
-			None => html!(),
-			Some(ItemLocation::Database { .. }) => html!(),
-			Some(ItemLocation::Inventory { id_path }) => {
+			ItemLocation::Inventory { id_path } => {
 				let onclick = Callback::from({
 					let context_menu = context_menu.clone();
 					let id_path = id_path.clone();
@@ -613,6 +603,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 					</button>
 				)
 			}
+			_ => html!(),
 		};
 		let contents = html! {
 			<div>
@@ -670,9 +661,9 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 	};
 	let add_tag_button = match (available_tags.is_empty(), &props.location) {
 		// Cannot toggle the tag if there are no tags, or the item is in the database
-		(true, _) | (_, None | Some(ItemLocation::Database { .. })) => None,
+		(true, _) | (false, ItemLocation::Database { .. } | ItemLocation::Explicit { .. }) => None,
 		// Can toggle the tag if the item is in the character's inventory
-		(_, Some(ItemLocation::Inventory { id_path })) => Some({
+		(_, ItemLocation::Inventory { id_path }) => Some({
 			let onchange = state.dispatch_change({
 				let state = state.clone();
 				let item_ref = ItemRef { path: id_path.clone(), name: get_item_path_names(&state, &id_path) };
@@ -724,7 +715,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 		});
 	}
 
-	if let Some(ItemLocation::Inventory { id_path }) = &props.location {
+	if let ItemLocation::Inventory { id_path } = &props.location {
 		// TODO: update the notes for an item when it is moved between inventory containers
 		//       (wont be done at this location, this is just where the thought came to mind)
 		// TODO: update inventory panel to show notes in each row

@@ -709,7 +709,8 @@ fn SpecificItem(SpecificItemProps { item, quantity, prefix, disabled }: &Specifi
 	let onclick = context_menu::use_control_action({
 		let item = item.clone();
 		move |_, context| {
-			context_menu::Action::open(&context, item.name.clone(), html!(<ItemInfo item={item.clone()} />))
+			let location = ItemLocation::Explicit { item: item.clone() };
+			context_menu::Action::open(&context, item.name.clone(), html!(<ItemInfo {location} />))
 		}
 	});
 	html! {<>
@@ -809,7 +810,8 @@ fn SelectItem(SelectItemProps { filter, selection_path, prefix, disabled }: &Sel
 	}
 	let onclick_selected = context_menu::use_control_action({
 		move |rc_item: Rc<Item>, context| {
-			context_menu::Action::open(&context, rc_item.name.clone(), html!(<ItemInfo item={rc_item.clone()} />))
+			let location = ItemLocation::Explicit { item: rc_item.clone() };
+			context_menu::Action::open(&context, rc_item.name.clone(), html!(<ItemInfo {location} />))
 		}
 	});
 	html! {<>

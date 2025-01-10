@@ -11,7 +11,11 @@ use crate::{
 			get_inventory_item, get_item_path_names, inventory::equip_toggle::ItemRowEquipBox, AddItemButton,
 			AddItemOperation, ItemBodyProps, ItemInfo, ItemLocation,
 		},
-		data::item::{self, container::item::ItemPath, Item},
+		data::item::{
+			self,
+			container::item::{EquipStatus, ItemPath},
+			Item,
+		},
 	},
 };
 use yew::prelude::*;
@@ -71,8 +75,12 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 			Some(change::inventory::RemoveItem(item_ref.clone()))
 		}
 	});
-	let mut item_props =
-		ItemBodyProps { location: Some(ItemLocation::Inventory { id_path: id_path.clone() }), ..Default::default() };
+	let mut item_props = ItemBodyProps {
+		location: ItemLocation::Inventory { id_path: id_path.clone() },
+		on_quantity_changed: None,
+		equip_status: EquipStatus::default(),
+		set_equipped: None,
+	};
 	match &item.kind {
 		item::Kind::Simple { .. } => {
 			item_props.on_quantity_changed = Some(state.new_dispatch({
