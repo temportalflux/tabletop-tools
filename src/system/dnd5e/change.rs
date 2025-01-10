@@ -12,11 +12,10 @@ pub mod hit_points;
 mod inspiration;
 pub use inspiration::*;
 
+pub mod inventory;
+
 mod item_consume_spell;
 pub use item_consume_spell::*;
-
-mod item_equip;
-pub use item_equip::*;
 
 mod limited_uses;
 pub use limited_uses::*;

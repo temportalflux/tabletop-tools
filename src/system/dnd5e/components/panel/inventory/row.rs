@@ -3,19 +3,19 @@ use crate::{
 	components::context_menu,
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::dnd5e::{
+		change::{self, inventory::EquipItem},
 		components::panel::{
-			get_inventory_item, inventory::equip_toggle::ItemRowEquipBox, AddItemButton, AddItemOperation,
-			ItemBodyProps, ItemInfo, ItemLocation,
+			get_inventory_item, get_inventory_item_hierarchy, inventory::equip_toggle::ItemRowEquipBox, AddItemButton,
+			AddItemOperation, ItemBodyProps, ItemInfo, ItemLocation,
 		},
-		data::item::{self, container::item::EquipStatus, Item},
+		data::item::{self, container::item::ItemPath, Item},
 	},
 };
-use uuid::Uuid;
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct ItemRowProps {
-	pub id_path: Vec<Uuid>,
+	pub id_path: ItemPath,
 	pub item: Item,
 	#[prop_or_default]
 	pub is_equipped: Option<bool>,
@@ -35,7 +35,8 @@ pub fn ItemRow(ItemRowProps { id_path, item, is_equipped }: &ItemRowProps) -> Ht
 			{is_equipped.as_ref().map(|is_equipped| html! {
 				<td class="text-center">
 					<ItemRowEquipBox
-						id={id_path.last().unwrap().clone()}
+						id={id_path.last().unwrap()}
+						name={item.name.clone()}
 						is_equipable={item.is_equipable()}
 						can_be_equipped={item.can_be_equipped(&*state)}
 						is_equipped={*is_equipped}
@@ -59,21 +60,17 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 		return Html::default();
 	};
 
-	let on_delete = state.new_dispatch({
+	let on_delete = state.dispatch_change({
 		let id_path = id_path.clone();
+		let item_name_path = {
+			let iter = get_inventory_item_hierarchy(&state, &id_path).into_iter();
+			let iter = iter.map(|item| item.name.clone());
+			iter.collect::<Vec<_>>()
+		};
 		let close_modal = close_modal.clone();
-		move |_: MouseEvent, persistent| {
-			let equip_status = {
-				let item_id = id_path.get(0);
-				let equip_status = item_id.map(|id| persistent.inventory.get_equip_status(id));
-				equip_status.unwrap_or_default()
-			};
-			let _item = persistent.inventory.remove_at_path(&id_path);
+		move |_| {
 			close_modal.emit(());
-			match equip_status {
-				EquipStatus::Unequipped => MutatorImpact::None,
-				EquipStatus::Equipped | EquipStatus::Attuned => MutatorImpact::Recompile,
-			}
+			Some(change::inventory::RemoveItem { path: id_path.clone(), name: item_name_path.clone() })
 		}
 	});
 	let mut item_props =
@@ -93,11 +90,11 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 			}));
 		}
 		item::Kind::Equipment(_equipment) => {
-			if id_path.len() == 1 {
-				item_props.equip_status = state.inventory().get_equip_status(&id_path[0]);
-				item_props.set_equipped = Some(state.dispatch_change({
-					let id: Uuid = id_path[0].clone();
-					move |status| Some(crate::system::dnd5e::change::EquipItem { id, status })
+			if let Some(id) = id_path.as_single() {
+				item_props.equip_status = state.inventory().get_equip_status(&id);
+				let name = item.name.clone();
+				item_props.set_equipped = Some(state.dispatch_change(move |status| {
+					Some(EquipItem { id, name: name.clone(), status })
 				}));
 			}
 		}
@@ -110,21 +107,39 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 			btn_classes={classes!("btn-outline-theme", "btn-sm", "mx-1")}
 			operation={AddItemOperation::Move {
 				item_id: id_path.clone(),
-				source_container: match id_path.len() {
-					1 => None,
-					// TODO: This should take the first n-1 elements as the parent path,
-					// right now it assumes that the current item is always in a top-level container.
-					n => Some(id_path[0..(n-1)].to_vec()),
-				},
+				source_container: id_path.container(),
 			}}
-			on_click={state.new_dispatch({
+			on_click={Callback::from({
 				let close_modal = close_modal.clone();
-				let id_path = id_path.clone();
-				move |dst_id: Option<Vec<Uuid>>, persistent| {
-					let Some(item) = persistent.inventory.remove_at_path(&id_path) else { return MutatorImpact::None; };
-					persistent.inventory.insert_to(item, &dst_id);
+				let item_path = id_path.clone();
+				let item_name_path = {
+					let iter = get_inventory_item_hierarchy(&state, &id_path).into_iter();
+					let iter = iter.map(|item| item.name.clone());
+					iter.collect::<Vec<_>>()
+				};
+				let mutate = state.dispatch_change({
+					let state = state.clone();
+					move |dest_path: Option<ItemPath>| {
+						let destination_container = match dest_path {
+							None => None,
+							Some(path) => {
+								let container_names = {
+									let iter = get_inventory_item_hierarchy(&state, &path).into_iter();
+									let iter = iter.map(|item| item.name.clone());
+									iter.collect::<Vec<_>>()
+								};
+								Some((path, container_names))
+							}
+						};
+						Some(change::inventory::MoveItem {
+							item: (item_path.clone(), item_name_path.clone()),
+							destination_container,
+						})
+					}
+				});
+				move |dst_id: Option<ItemPath>| {
+					mutate.emit(dst_id);
 					close_modal.emit(());
-					MutatorImpact::None
 				}
 			})}
 		/>

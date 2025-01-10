@@ -2,7 +2,7 @@ use crate::{
 	bootstrap::components::Tooltip,
 	components::stop_propagation,
 	page::characters::sheet::CharacterHandle,
-	system::dnd5e::{change::EquipItem, data::item::container::item::EquipStatus},
+	system::dnd5e::{change::inventory::EquipItem, data::item::container::item::EquipStatus},
 	utility::InputExt,
 };
 use uuid::Uuid;
@@ -11,13 +11,14 @@ use yew::prelude::*;
 #[derive(Clone, PartialEq, Properties)]
 pub struct EquipBoxProps {
 	pub id: Uuid,
+	pub name: AttrValue,
 	pub is_equipable: bool,
 	pub can_be_equipped: Result<(), String>,
 	pub is_equipped: bool,
 }
 
 #[function_component]
-pub fn ItemRowEquipBox(EquipBoxProps { id, is_equipable, can_be_equipped, is_equipped }: &EquipBoxProps) -> Html {
+pub fn ItemRowEquipBox(EquipBoxProps { id, name, is_equipable, can_be_equipped, is_equipped }: &EquipBoxProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	if !*is_equipable {
 		return html! { {"--"} };
@@ -25,13 +26,15 @@ pub fn ItemRowEquipBox(EquipBoxProps { id, is_equipable, can_be_equipped, is_equ
 
 	let on_change = state.dispatch_change({
 		let id = id.clone();
+		let name = name.clone();
 		move |evt: web_sys::Event| {
 			let Some(should_be_equipped) = evt.input_checked() else { return None };
 			let desired_status = match should_be_equipped {
 				false => EquipStatus::Unequipped,
 				true => EquipStatus::Equipped,
 			};
-			Some(EquipItem { id, status: desired_status })
+			let name = name.to_string();
+			Some(EquipItem { id, name, status: desired_status })
 		}
 	});
 

@@ -11,11 +11,12 @@ use uuid::Uuid;
 #[derive(Clone, Debug, PartialEq)]
 pub struct EquipItem {
 	pub id: Uuid,
+	pub name: String,
 	pub status: EquipStatus,
 }
 
 crate::impl_trait_eq!(EquipItem);
-kdlize::impl_kdl_node!(EquipItem, "equip_item");
+kdlize::impl_kdl_node!(EquipItem, "item_equip");
 
 impl Change for EquipItem {
 	type Target = Character;
@@ -31,12 +32,16 @@ impl FromKdl<NodeContext> for EquipItem {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let status = node.next_str_req_t()?;
 		let id = node.next_str_req_t()?;
-		Ok(Self { id, status })
+		let name = node.next_str_req()?.to_owned();
+		Ok(Self { id, name, status })
 	}
 }
 
 impl AsKdl for EquipItem {
 	fn as_kdl(&self) -> NodeBuilder {
-		NodeBuilder::default().with_entry(self.status.to_string()).with_entry(self.id.to_string())
+		NodeBuilder::default()
+			.with_entry(self.status.to_string())
+			.with_entry(self.id.to_string())
+			.with_entry(self.name.as_str())
 	}
 }

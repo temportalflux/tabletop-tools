@@ -15,7 +15,7 @@ use crate::{
 				currency::Wallet,
 				item::{
 					self,
-					container::item::{AsItem, EquipStatus},
+					container::item::{AsItem, EquipStatus, ItemPath},
 					Item,
 				},
 				Indirect,
@@ -53,7 +53,7 @@ pub struct SystemItemProps {
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct InventoryItemProps {
-	pub id_path: Vec<uuid::Uuid>,
+	pub id_path: ItemPath,
 }
 
 #[derive(Default, PartialEq, Clone)]
@@ -123,12 +123,12 @@ pub fn Inventory() -> Html {
 		let slot_range = 0..state.persistent().attunement_slots;
 		let iter = state.inventory().iter_by_name();
 		let iter = iter.filter_map(|(id, entry)| match entry.status {
-			EquipStatus::Attuned => Some((id, Rc::new(entry.item.clone()))),
+			EquipStatus::Attuned => Some((ItemPath::from(id), Rc::new(entry.item.clone()))),
 			_ => None,
 		});
 		let iter = slot_range.zip_longest(iter);
 		let iter = iter.filter_map(|zip| match zip {
-			EitherOrBoth::Both(_slot, (item_id, rc_item)) => Some(Some((*item_id, rc_item))),
+			EitherOrBoth::Both(_slot, (item_id, rc_item)) => Some(Some((item_id, rc_item))),
 			EitherOrBoth::Left(_slot) => Some(None),
 			EitherOrBoth::Right(_) => None,
 		});
@@ -140,10 +140,10 @@ pub fn Inventory() -> Html {
 			<div class="row m-0">
 				{attuned_entries.into_iter().map(|entry| match entry {
 					None => html!(<AttunementSlot />),
-					Some((item_id, rc_item)) => html!(<AttunementSlot
+					Some((id_path, item)) => html!(<AttunementSlot
 						entry={AttunementSlotEntry {
-							id_path: vec![item_id],
-							item: rc_item,
+							id_path,
+							item,
 						}}
 					/>),
 				}).collect::<Vec<_>>()}
@@ -167,7 +167,7 @@ struct AttunementSlotProps {
 
 #[derive(Clone, PartialEq)]
 struct AttunementSlotEntry {
-	id_path: Vec<Uuid>,
+	id_path: ItemPath,
 	item: Rc<Item>,
 }
 
@@ -236,7 +236,7 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 				let as_html = items.map(|(id, entry)| {
 					html! {
 						<ItemRow
-							id_path={vec![id.clone()]}
+							id_path={ItemPath::from(id)}
 							item={entry.item.clone()}
 							is_equipped={entry.status == EquipStatus::Equipped}
 						/>
@@ -257,6 +257,7 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 			wallet =
 				(!container.wallet().is_empty()).then(|| html! { <WalletInlineButton id={container_id.clone()} /> });
 			rows = {
+				let container_path = ItemPath::from(container_id);
 				let items = container.iter_by_name();
 				let items = items.filter(|(_id, item)| {
 					if let Some(search_text) = &search_filter.text {
@@ -266,14 +267,14 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 				});
 				let items = items.map(|(item_id, item)| {
 					html! {
-						<ItemRow id_path={vec![container_id.clone(), item_id.clone()]} item={item.clone()} />
+						<ItemRow id_path={container_path.join(item_id)} item={item.clone()} />
 					}
 				});
 				items.collect::<Vec<_>>()
 			};
 			open_modal = Some(Callback::from({
 				let context_menu = context_menu.clone();
-				let id_path = vec![container_id.clone()];
+				let id_path = ItemPath::from(container_id);
 				let name = AttrValue::from(item.name.clone());
 				move |_| {
 					context_menu.dispatch(context_menu::Action::open_root(

@@ -136,8 +136,8 @@ fn PersonalitySection() -> Html {
 fn PersonalityCard(GeneralProp { value }: &GeneralProp<PersonalityKind>) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let personality_kind = *value;
-	let add_item =
-		state.dispatch_change(move |value| Some(ApplyDescription::InsertPersonality { kind: personality_kind, new: value }));
+	let add_item = state
+		.dispatch_change(move |value| Some(ApplyDescription::InsertPersonality { kind: personality_kind, new: value }));
 	let info_collapse = {
 		let collapse_id = format!("{}-info", value.to_string());
 		html! {

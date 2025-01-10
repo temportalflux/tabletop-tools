@@ -91,7 +91,11 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_change::<ConsumeItemSpell>();
 	registry.register_change::<ConsumeSpellSlot>();
 	registry.register_change::<DeathSaves>();
-	registry.register_change::<EquipItem>();
+	registry.register_change::<inventory::AddItem>();
+	registry.register_change::<inventory::EquipItem>();
+	registry.register_change::<inventory::MoveItem>();
+	registry.register_change::<inventory::PurchaseItem>();
+	registry.register_change::<inventory::RemoveItem>();
 	registry.register_change::<HealOrDamage>();
 	registry.register_change::<ApplyHitDice>();
 	registry.register_change::<LevelHP>();

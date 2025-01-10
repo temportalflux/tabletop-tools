@@ -12,6 +12,7 @@ use crate::{
 	},
 };
 use async_recursion::async_recursion;
+use itertools::Itertools;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 use std::{collections::HashMap, path::PathBuf};
 use uuid::Uuid;
@@ -25,9 +26,69 @@ pub use capacity::*;
 
 pub type Inventory = ItemContainer<EquipableEntry>;
 
+#[derive(Clone, PartialEq, Debug, Default)]
+pub struct ItemPath(Vec<Uuid>);
+impl<Id> From<Id> for ItemPath
+where
+	Id: AsRef<Uuid>,
+{
+	fn from(value: Id) -> Self {
+		Self(vec![*value.as_ref()])
+	}
+}
+impl ItemPath {
+	pub fn len(&self) -> usize {
+		self.0.len()
+	}
+	pub fn iter(&self) -> std::slice::Iter<'_, Uuid> {
+		self.0.iter()
+	}
+	pub fn as_single(&self) -> Option<Uuid> {
+		match self.0.len() == 1 {
+			true => self.first(),
+			false => None,
+		}
+	}
+	pub fn first(&self) -> Option<Uuid> {
+		self.0.get(0).map(|v| *v)
+	}
+	pub fn last(&self) -> Option<Uuid> {
+		self.0.last().map(|v| *v)
+	}
+	pub fn container(&self) -> Option<ItemPath> {
+		match self.0.len() {
+			0 | 1 => None,
+			n => Some(Self(self.0[0..(n - 1)].to_vec())),
+		}
+	}
+	pub fn push(&mut self, id: impl AsRef<Uuid>) {
+		self.0.push(*id.as_ref());
+	}
+	pub fn join(&self, id: impl AsRef<Uuid>) -> Self {
+		let mut path = self.clone();
+		path.push(id);
+		path
+	}
+}
+impl std::fmt::Display for ItemPath {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.0.iter().join("/"))
+	}
+}
+impl std::str::FromStr for ItemPath {
+	type Err = <Uuid as std::str::FromStr>::Err;
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		let mut path = Vec::new();
+		for id_str in s.split("/") {
+			path.push(Uuid::from_str(id_str)?);
+		}
+		Ok(Self(path))
+	}
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub struct ItemContainer<T> {
-	parent_item_id: Vec<Uuid>,
+	parent_item_id: ItemPath,
 	pub capacity: Capacity,
 	pub restriction: Option<Restriction>,
 	item_templates: HashMap<SourceId, usize>,
@@ -89,7 +150,7 @@ impl<T: AsItem> ItemContainer<T> {
 		self.items_by_id.get_mut(id).map(|entry| entry.as_item_mut())
 	}
 
-	pub fn get_mut_at_path<'c>(&'c mut self, id_path: &Vec<Uuid>) -> Option<&'c mut Item> {
+	pub fn get_mut_at_path<'c>(&'c mut self, id_path: &ItemPath) -> Option<&'c mut Item> {
 		let mut iter = id_path.iter();
 		let Some(first_id) = iter.next() else {
 			return None;
@@ -111,11 +172,7 @@ impl<T: AsItem> ItemContainer<T> {
 
 	fn push_entry(&mut self, mut entry: T) -> Uuid {
 		let id = Uuid::new_v4();
-		entry.set_id_path({
-			let mut path = self.parent_item_id.clone();
-			path.push(id);
-			path
-		});
+		entry.set_id_path(self.parent_item_id.join(id));
 		let search = self.itemids_by_name.binary_search_by(|id| {
 			let Some(entry_item) = self.get_item(id) else {
 				return std::cmp::Ordering::Less;
@@ -152,7 +209,7 @@ impl<T: AsItem> ItemContainer<T> {
 	/// Attempts to insert the item into the specified item container.
 	/// If no such item at the id exists OR that item is not an item container,
 	/// the provided item is inserted into this inventory.
-	pub fn insert_to(&mut self, item: Item, container_id: &Option<Vec<Uuid>>) -> Vec<Uuid> {
+	pub fn insert_to(&mut self, item: Item, container_id: Option<&ItemPath>) -> ItemPath {
 		if let Some(container_id) = container_id {
 			if let Some(existing_item) = self.get_mut_at_path(container_id) {
 				if let Some(container) = &mut existing_item.items {
@@ -163,7 +220,7 @@ impl<T: AsItem> ItemContainer<T> {
 				}
 			}
 		}
-		vec![self.insert(item)]
+		ItemPath::from(self.insert(item))
 	}
 
 	pub fn remove(&mut self, id: &Uuid) -> Option<Item> {
@@ -173,7 +230,7 @@ impl<T: AsItem> ItemContainer<T> {
 		self.items_by_id.remove(id).map(|entry| entry.into_item())
 	}
 
-	pub fn remove_at_path(&mut self, id_path: &Vec<Uuid>) -> Option<Item> {
+	pub fn remove_at_path(&mut self, id_path: &ItemPath) -> Option<Item> {
 		let count = id_path.len();
 		let mut iter = id_path.iter().enumerate().map(|(idx, id)| (id, idx == count - 1));
 		let Some((first_id, single_entry)) = iter.next() else {
@@ -267,7 +324,7 @@ where
 		};
 
 		let mut inventory = Self {
-			parent_item_id: Vec::new(),
+			parent_item_id: ItemPath::default(),
 			wallet,
 			capacity,
 			restriction,

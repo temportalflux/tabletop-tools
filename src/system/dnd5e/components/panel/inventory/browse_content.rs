@@ -1,20 +1,21 @@
+use super::ItemLocation;
 use crate::{
 	components::{
 		database::{use_query_all_typed, use_typed_fetch_callback_tuple, QueryAllArgs, QueryStatus},
 		Spinner,
 	},
 	database::Criteria,
-	page::characters::sheet::{joined::editor::CollapsableCard, CharacterHandle, MutatorImpact},
+	page::characters::sheet::{joined::editor::CollapsableCard, CharacterHandle},
 	system::{
 		dnd5e::{
+			change,
 			components::{
-				panel::{AddItemButton, AddItemOperation, ItemInfo},
+				panel::{get_inventory_item_hierarchy, AddItemButton, AddItemOperation, ItemInfo},
 				validate_uint_only, GeneralProp, WalletInline,
 			},
 			data::{
-				character::Persistent,
 				currency::Wallet,
-				item::{self, Item},
+				item::{self, container::item::ItemPath, Item},
 			},
 			DnD5e,
 		},
@@ -22,11 +23,7 @@ use crate::{
 	},
 	utility::InputExt,
 };
-
-use uuid::Uuid;
 use yew::prelude::*;
-
-use super::ItemLocation;
 
 #[function_component]
 pub fn BrowseModal() -> Html {
@@ -172,21 +169,23 @@ fn BrowsedItemCard(props: &GeneralProp<ItemLocation>) -> Html {
 		return Html::default();
 	};
 
-	let add_item = use_typed_fetch_callback_tuple::<Item, Option<Vec<Uuid>>>(
-		"Add Item".into(),
-		state.new_dispatch(Box::new({
-			move |(item, container_id), persistent: &mut Persistent| {
-				persistent.inventory.insert_to(item, &container_id);
-				// need items to have their data paths set up
-				// (normally this isn't needed until an item is equipped,
-				// but equipment with charges can be viewed without being actively equipped)
-				MutatorImpact::Recompile
-			}
-		})),
-	);
-	let add_item = add_item.reform({
-		let id = item.id.unversioned();
-		move |container_id| (id.clone(), container_id)
+	let add_item = state.dispatch_change({
+		let state = state.clone();
+		let item = item.clone();
+		move |container: Option<ItemPath>| {
+			let container = match container {
+				None => None,
+				Some(path) => {
+					let names = {
+						let iter = get_inventory_item_hierarchy(&state, &path).into_iter();
+						let iter = iter.map(|item| item.name.clone());
+						iter.collect()
+					};
+					Some((path, names))
+				}
+			};
+			Some(change::inventory::AddItem { item: item.clone(), container })
+		}
 	});
 
 	let card_id = item.id.unversioned().ref_id();
@@ -224,7 +223,7 @@ struct AddItemActionsProps {
 	batch_size: Option<u32>,
 	worth: Wallet,
 }
-type AddItemArgs = (u32, Wallet, Option<Vec<Uuid>>);
+type AddItemArgs = (usize, Wallet, Option<ItemPath>);
 #[function_component]
 fn AddItemActions(AddItemActionsProps { id, batch_size, worth }: &AddItemActionsProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
@@ -234,29 +233,24 @@ fn AddItemActions(AddItemActionsProps { id, batch_size, worth }: &AddItemActions
 
 	let add_items = use_typed_fetch_callback_tuple::<Item, AddItemArgs>(
 		"Add Items".into(),
-		state.new_dispatch(Box::new({
-			move |args: (Item, AddItemArgs), persistent: &mut Persistent| {
-				let (mut item, (amount, cost, container_id)) = args;
-				let items = if let item::Kind::Simple { count } = &mut item.kind {
-					*count *= amount;
-					vec![item]
-				} else {
-					let mut items = Vec::with_capacity(amount as usize);
-					items.resize(amount as usize, item);
-					items
+		state.dispatch_change({
+			let state = state.clone();
+			move |args: (Item, AddItemArgs)| {
+				let (item, (amount, cost, container)) = args;
+				let container = match container {
+					None => None,
+					Some(path) => {
+						let names = {
+							let iter = get_inventory_item_hierarchy(&state, &path).into_iter();
+							let iter = iter.map(|item| item.name.clone());
+							iter.collect()
+						};
+						Some((path, names))
+					}
 				};
-				if !cost.is_empty() {
-					persistent.inventory.wallet_mut().remove(cost, auto_exchange);
-				}
-				for item in items {
-					persistent.inventory.insert_to(item, &container_id);
-				}
-				// need items to have their data paths set up
-				// (normally this isn't needed until an item is equipped,
-				// but equipment with charges can be viewed without being actively equipped)
-				MutatorImpact::Recompile
+				Some(change::inventory::PurchaseItem { item, amount, cost, container })
 			}
-		})),
+		}),
 	);
 	let add_items = add_items.reform({
 		let id = id.clone();
@@ -299,7 +293,7 @@ fn AddItemActions(AddItemActionsProps { id, batch_size, worth }: &AddItemActions
 				let add_items = add_items.clone();
 				let amt_state = amt_state.clone();
 				move |container_id| {
-					add_items.emit((*amt_state, Wallet::default(), container_id));
+					add_items.emit((*amt_state as usize, Wallet::default(), container_id));
 					amt_state.set(1);
 				}
 			});
@@ -377,7 +371,7 @@ fn AddItemActions(AddItemActionsProps { id, batch_size, worth }: &AddItemActions
 				let add_items = add_items.clone();
 				let amt_state = amt_state.clone();
 				move |container_id| {
-					add_items.emit((*amt_state, purchase_cost, container_id));
+					add_items.emit((*amt_state as usize, purchase_cost, container_id));
 					amt_state.set(1);
 				}
 			});

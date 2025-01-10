@@ -1,3 +1,4 @@
+use super::ItemPath;
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
@@ -17,7 +18,7 @@ use std::path::PathBuf;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct EquipableEntry {
-	pub id_path: Vec<uuid::Uuid>,
+	pub id_path: ItemPath,
 	pub item: Item,
 	pub status: EquipStatus,
 }
@@ -48,15 +49,15 @@ impl EquipableEntry {
 
 impl AsItem for EquipableEntry {
 	fn from_item(item: Item) -> Self {
-		Self { id_path: Vec::new(), item, status: EquipStatus::Unequipped }
+		Self { id_path: ItemPath::default(), item, status: EquipStatus::Unequipped }
 	}
 
-	fn set_id_path(&mut self, id: Vec<uuid::Uuid>) {
+	fn set_id_path(&mut self, id: ItemPath) {
 		self.item.set_id_path(id.clone());
 		self.id_path = id;
 	}
 
-	fn id_path(&self) -> Option<&Vec<uuid::Uuid>> {
+	fn id_path(&self) -> Option<&ItemPath> {
 		Some(&self.id_path)
 	}
 
@@ -167,7 +168,7 @@ impl FromKdl<NodeContext> for EquipableEntry {
 		if node.get_bool_opt("equipped")? == Some(true) {
 			status = EquipStatus::Equipped;
 		}
-		Ok(Self { id_path: Vec::new(), status, item })
+		Ok(Self { id_path: ItemPath::default(), status, item })
 	}
 }
 

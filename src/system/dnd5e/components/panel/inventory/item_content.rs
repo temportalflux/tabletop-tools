@@ -19,7 +19,10 @@ use crate::{
 				character::{Persistent, MAX_SPELL_RANK},
 				item::{
 					self,
-					container::{item::EquipStatus, spell::ContainerSpell},
+					container::{
+						item::{EquipStatus, ItemPath},
+						spell::ContainerSpell,
+					},
 					Item,
 				},
 				spell::CastingDuration,
@@ -37,7 +40,25 @@ use itertools::Itertools;
 use std::{collections::HashSet, path::Path, str::FromStr, sync::Arc};
 use yew::prelude::*;
 
-pub fn get_inventory_item<'c>(state: &'c CharacterHandle, id_path: &Vec<uuid::Uuid>) -> Option<&'c Item> {
+pub fn get_inventory_item_hierarchy<'c>(state: &'c CharacterHandle, id_path: &ItemPath) -> Vec<&'c Item> {
+	let mut iter = id_path.iter();
+	let mut item = None;
+	let mut items = Vec::new();
+	while let Some(id) = iter.next() {
+		item = match item {
+			None => state.inventory().get_item(id),
+			Some(prev_item) => match &prev_item.items {
+				None => return Vec::new(),
+				Some(container) => container.get_item(id),
+			},
+		};
+		if let Some(item) = item {
+			items.push(item);
+		}
+	}
+	items
+}
+pub fn get_inventory_item<'c>(state: &'c CharacterHandle, id_path: &ItemPath) -> Option<&'c Item> {
 	let mut iter = id_path.iter();
 	let mut item = None;
 	while let Some(id) = iter.next() {
@@ -53,7 +74,7 @@ pub fn get_inventory_item<'c>(state: &'c CharacterHandle, id_path: &Vec<uuid::Uu
 	}
 	item
 }
-pub fn get_inventory_item_mut<'c>(persistent: &'c mut Persistent, id_path: &Vec<uuid::Uuid>) -> Option<&'c mut Item> {
+pub fn get_inventory_item_mut<'c>(persistent: &'c mut Persistent, id_path: &ItemPath) -> Option<&'c mut Item> {
 	let mut iter = id_path.iter();
 	let Some(id) = iter.next() else {
 		return None;
@@ -74,7 +95,7 @@ pub fn get_inventory_item_mut<'c>(persistent: &'c mut Persistent, id_path: &Vec<
 #[derive(Clone, PartialEq)]
 pub enum ItemLocation {
 	Database { query: UseQueryAllHandle<Item>, index: usize },
-	Inventory { id_path: Vec<uuid::Uuid> },
+	Inventory { id_path: ItemPath },
 }
 impl ItemLocation {
 	pub fn resolve<'c>(&'c self, state: &'c CharacterHandle) -> Option<&'c Item> {
@@ -780,7 +801,7 @@ fn UIntField(UIntFieldProps { class, value, on_changed }: &UIntFieldProps) -> Ht
 }
 
 #[function_component]
-fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid>>) -> Html {
+fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<ItemPath>) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let context_menu = use_context::<context_menu::Control>().unwrap();
 
@@ -866,7 +887,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 
 #[derive(Clone, PartialEq, Properties)]
 struct ContainedSpellsSectionProps {
-	id_path: Vec<uuid::Uuid>,
+	id_path: ItemPath,
 	fetch_indirect_spells: UseQueryDiscreteTypedHandle<Spell>,
 	remaining_total_rank: Option<usize>,
 }
@@ -906,7 +927,7 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 	});
 
 	fn get_container_spell<'c>(
-		persistent: &'c mut Persistent, id_path: &Vec<uuid::Uuid>, spell_idx: usize,
+		persistent: &'c mut Persistent, id_path: &ItemPath, spell_idx: usize,
 	) -> Option<&'c mut ContainerSpell> {
 		let Some(item) = get_inventory_item_mut(persistent, &id_path) else {
 			return None;
@@ -1154,7 +1175,7 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 
 #[derive(Clone, PartialEq, Properties)]
 struct ModalSpellContainerAvailableListProps {
-	id_path: Vec<uuid::Uuid>,
+	id_path: ItemPath,
 	fetch_indirect_spells: UseQueryDiscreteTypedHandle<Spell>,
 }
 #[function_component]
@@ -1267,7 +1288,7 @@ fn ModalSpellContainerAvailableList(props: &ModalSpellContainerAvailableListProp
 
 #[derive(Clone, PartialEq, Properties)]
 struct SpellListContainerActionProps {
-	container_id: Vec<uuid::Uuid>,
+	container_id: ItemPath,
 	spell_id: SourceId,
 	has_rank_capacity: bool,
 	has_count_capacity: bool,

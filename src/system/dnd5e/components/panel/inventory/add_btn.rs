@@ -1,5 +1,7 @@
-use crate::{page::characters::sheet::CharacterHandle, system::dnd5e::data::item::container::item::AsItem};
-use uuid::Uuid;
+use crate::{
+	page::characters::sheet::CharacterHandle,
+	system::dnd5e::data::item::container::item::{AsItem, ItemPath},
+};
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -13,14 +15,14 @@ pub struct AddItemButtonProps {
 	#[prop_or_default]
 	pub disabled: bool,
 	pub operation: AddItemOperation,
-	pub on_click: Callback<Option<Vec<Uuid>>>,
+	pub on_click: Callback<Option<ItemPath>>,
 }
 
 #[derive(Clone, PartialEq)]
 pub enum AddItemOperation {
 	Add,
 	Buy,
-	Move { item_id: Vec<Uuid>, source_container: Option<Vec<Uuid>> },
+	Move { item_id: ItemPath, source_container: Option<ItemPath> },
 }
 
 #[function_component]
@@ -73,13 +75,13 @@ pub fn AddItemButton(props: &AddItemButtonProps) -> Html {
 		};
 	}
 
-	let is_valid_dst = |dst_id: &Option<Vec<Uuid>>| match &props.operation {
+	let is_valid_dst = |dst_id: &Option<ItemPath>| match &props.operation {
 		AddItemOperation::Move { item_id, source_container } => {
 			dst_id != source_container && dst_id.as_ref() != Some(item_id)
 		}
 		_ => true,
 	};
-	let make_container_button = |id: Option<Vec<Uuid>>, name: String| -> Html {
+	let make_container_button = |id: Option<ItemPath>, name: String| -> Html {
 		let mut classes = classes!("dropdown-item");
 		let is_a_valid_dst = is_valid_dst(&id);
 		let mut onclick = props.on_click.reform(move |_| id.clone());
@@ -99,7 +101,9 @@ pub fn AddItemButton(props: &AddItemButtonProps) -> Html {
 	container_entries.push(make_container_button(None, "Equipment".into()));
 	// TODO: Display containers that are inside other containers (not just top level)
 	container_entries.extend(
-		item_containers.into_iter().map(|(id, item)| make_container_button(Some(vec![id.clone()]), item.name.clone())),
+		item_containers
+			.into_iter()
+			.map(|(id, item)| make_container_button(Some(ItemPath::from(id)), item.name.clone())),
 	);
 
 	html! {

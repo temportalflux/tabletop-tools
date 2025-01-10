@@ -17,6 +17,7 @@ use crate::{
 					spellcasting::{AbilityOrStat, CasterKind, CastingMethod, RitualCapability, SpellEntry},
 					ObjectCacheArc, SpellHealingBonus, MAX_SPELL_RANK,
 				},
+				item::container::item::ItemPath,
 				proficiency,
 				roll::Roll,
 				spell::{self, CastingDuration, DurationKind},
@@ -1520,7 +1521,7 @@ enum UseSpell {
 	RitualOnly,
 	Slot { spell_rank: u8, slot_rank: u8, slots: Option<(usize, usize)>, id: SourceId },
 	LimitedUse { data_path: Option<PathBuf>, max_uses: u32, uses_consumed: u32 },
-	ConsumeItemSpell { item_path: Vec<uuid::Uuid>, spell_id: SourceId, consume_item: bool },
+	ConsumeItemSpell { item_path: ItemPath, spell_id: SourceId, consume_item: bool },
 }
 #[function_component]
 fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {

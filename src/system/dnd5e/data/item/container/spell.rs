@@ -1,3 +1,4 @@
+use super::item::ItemPath;
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
@@ -114,7 +115,7 @@ impl SpellContainer {
 			source: PathBuf::new(),
 			classified_as: None,
 			method: CastingMethod::FromContainer {
-				item_id: Vec::new(),
+				item_id: ItemPath::default(),
 				consume_spell: casting.consume_spell,
 				consume_item: casting.consume_item,
 			},
@@ -128,7 +129,7 @@ impl SpellContainer {
 		})
 	}
 
-	pub fn add_spellcasting(&self, stats: &mut Character, item_id: &Vec<uuid::Uuid>, parent: &ReferencePath) {
+	pub fn add_spellcasting(&self, stats: &mut Character, item_id: &ItemPath, parent: &ReferencePath) {
 		for contained in &self.spells {
 			let Some(mut entry) = self.get_spell_entry(contained, None) else {
 				continue;

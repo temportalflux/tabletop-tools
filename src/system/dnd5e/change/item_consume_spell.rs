@@ -1,12 +1,15 @@
 use crate::{
 	kdl_ext::NodeContext,
-	system::{dnd5e::data::character::Character, Change, SourceId},
+	system::{
+		dnd5e::data::{character::Character, item::container::item::ItemPath},
+		Change, SourceId,
+	},
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConsumeItemSpell {
-	pub item_path: Vec<uuid::Uuid>,
+	pub item_path: ItemPath,
 	pub spell_id: SourceId,
 	pub consume_item: bool,
 }
@@ -35,14 +38,7 @@ impl FromKdl<NodeContext> for ConsumeItemSpell {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let consume_item = node.get_bool_opt("consume_item")?.unwrap_or_default();
-		let item_path = {
-			let mut node = node.query_req("scope() > item")?;
-			let mut item_path = Vec::with_capacity(3);
-			while let Some(id) = node.next_str_opt_t()? {
-				item_path.push(id);
-			}
-			item_path
-		};
+		let item_path = node.query_str_req_t("scope() > item", 0)?;
 		let spell_id = node.query_str_req_t("scope() > spell", 0)?;
 		Ok(Self { item_path, spell_id, consume_item })
 	}
@@ -54,10 +50,7 @@ impl AsKdl for ConsumeItemSpell {
 		if self.consume_item {
 			node.entry(("consume_item", true));
 		}
-		node.child(("item", {
-			let iter_item_ids = self.item_path.iter();
-			iter_item_ids.fold(NodeBuilder::default(), |node, id| node.with_entry(id.to_string()))
-		}));
+		node.child(("item", self.item_path.to_string()));
 		node.child(("spell", self.spell_id.to_string()));
 		node
 	}
