@@ -1,6 +1,6 @@
 ---
 created: 2024-12-31T21:04:06.632Z
-updated: 2024-12-31T21:04:06.630Z
+updated: 2025-01-11T14:09:08.013Z
 assigned: ""
 progress: 0
 tags:
@@ -18,3 +18,5 @@ Open Hand Monk "Tranquility"
 Devotion Paladin "Purity of Spirit"
 - "Protection from Evil and Good" spell has a condition that it grants
 - feature ensures that the character always has that condition (cannot be removed)
+
+Bless/Bane

@@ -18,6 +18,7 @@ columnSorting:
 - [item-browser-filters](tasks/item-browser-filters.md)
 - [spell-browser-filters](tasks/spell-browser-filters.md)
 - [spell-info-context-panel](tasks/spell-info-context-panel.md)
+- [inspiration-to-tokens](tasks/inspiration-to-tokens.md)
 - [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
 - [autosave](tasks/autosave.md)
 - [parcels-mailbox](tasks/parcels-mailbox.md)
@@ -30,8 +31,6 @@ columnSorting:
 - [details-drawer-layouts-evaluations](tasks/details-drawer-layouts-evaluations.md)
 - [dodge-action-applies-a-condition](tasks/dodge-action-applies-a-condition.md)
 - [customizations-breakout-tasks](tasks/customizations-breakout-tasks.md)
-- [performance-instrumentation](tasks/performance-instrumentation.md)
-- [identify-poor-performance](tasks/identify-poor-performance.md)
 - [transcribing-from-spell-containers](tasks/transcribing-from-spell-containers.md)
 - [updated-module-actions](tasks/updated-module-actions.md)
 - [name-generator](tasks/name-generator.md)
@@ -42,17 +41,18 @@ columnSorting:
 - [user-docs](tasks/user-docs.md)
 - [user-written-modules](tasks/user-written-modules.md)
 - [standalone-app](tasks/standalone-app.md)
+- [user-defined-layouts](tasks/user-defined-layouts.md)
 
 ## Todo List
 
-- [embed-item-and-condition-indirection-in-characters](tasks/embed-item-and-condition-indirection-in-characters.md)
-- [upgrade-kdl-to-6-x](tasks/upgrade-kdl-to-6-x.md)
 - [mutator-to-disable-action-budget](tasks/mutator-to-disable-action-budget.md)
 - [spellcasting-limited-by-both-slot-and-uses-at-the-same-time](tasks/spellcasting-limited-by-both-slot-and-uses-at-the-same-time.md)
 - [display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel](tasks/display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel.md)
+- [apply-when-rest-rest-mutator-can-grant-conditions](tasks/apply-when-rest-rest-mutator-can-grant-conditions.md)
+- [embed-item-and-condition-indirection-in-characters](tasks/embed-item-and-condition-indirection-in-characters.md)
+- [upgrade-kdl-to-6-x](tasks/upgrade-kdl-to-6-x.md)
 - [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
 - [wizard-spell-mastery](tasks/wizard-spell-mastery.md)
-- [apply-when-rest-rest-mutator-can-grant-conditions](tasks/apply-when-rest-rest-mutator-can-grant-conditions.md)
 
 ## In Progress
 
@@ -60,6 +60,8 @@ columnSorting:
 
 ## Done
 
+- [performance-instrumentation](tasks/performance-instrumentation.md)
+- [identify-poor-performance](tasks/identify-poor-performance.md)
 - [migrate-spell-query-on-recompile-to-a-background-task](tasks/migrate-spell-query-on-recompile-to-a-background-task.md)
 - [move-autosync-status-to-sidebar-for-events-information](tasks/move-autosync-status-to-sidebar-for-events-information.md)
 - [view-scaler-re-eval](tasks/view-scaler-re-eval.md)
