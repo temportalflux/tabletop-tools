@@ -18,3 +18,6 @@ pub use remove_item::*;
 
 mod tag_item;
 pub use tag_item::*;
+
+mod wallet;
+pub use wallet::*;

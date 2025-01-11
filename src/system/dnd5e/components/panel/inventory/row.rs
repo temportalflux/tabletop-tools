@@ -3,12 +3,9 @@ use crate::{
 	components::context_menu,
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::dnd5e::{
-		change::{
-			self,
-			inventory::{EquipItem, ItemRef},
-		},
+		change::{self, inventory::EquipItem},
 		components::panel::{
-			get_inventory_item, get_item_path_names, inventory::equip_toggle::ItemRowEquipBox, AddItemButton,
+			get_inventory_item, inventory::equip_toggle::ItemRowEquipBox, make_item_ref, AddItemButton,
 			AddItemOperation, ItemBodyProps, ItemInfo, ItemLocation,
 		},
 		data::item::{
@@ -68,7 +65,7 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 	};
 
 	let on_delete = state.dispatch_change({
-		let item_ref = ItemRef { path: id_path.clone(), name: get_item_path_names(&state, &id_path) };
+		let item_ref = make_item_ref(&state, id_path.clone());
 		let close_modal = close_modal.clone();
 		move |_| {
 			close_modal.emit(());
@@ -117,15 +114,9 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 			on_click={Callback::from({
 				let mutate = state.dispatch_change({
 					let state = state.clone();
-					let item_ref = ItemRef{ path: id_path.clone(), name: get_item_path_names(&state, &id_path) };
+					let item_ref = make_item_ref(&state, id_path.clone());
 					move |dest_path: Option<ItemPath>| {
-						let destination_container = match dest_path {
-							None => None,
-							Some(path) => {
-								let container_names = get_item_path_names(&state, &path);
-								Some(ItemRef{ path, name: container_names })
-							}
-						};
+						let destination_container = dest_path.map(|path| make_item_ref(&state, path));
 						Some(change::inventory::MoveItem {
 							item: item_ref.clone(),
 							destination_container,

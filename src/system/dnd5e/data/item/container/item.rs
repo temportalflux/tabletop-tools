@@ -152,19 +152,23 @@ impl<T: AsItem> ItemContainer<T> {
 
 	pub fn get_mut_at_path<'c>(&'c mut self, id_path: &ItemPath) -> Option<&'c mut Item> {
 		let mut iter = id_path.iter();
-		let Some(first_id) = iter.next() else {
-			return None;
-		};
-		let Some(mut item) = self.get_mut(first_id) else {
-			return None;
-		};
+		let Some(first_id) = iter.next() else { return None };
+		let Some(mut item) = self.get_mut(first_id) else { return None };
 		for id in iter {
-			let Some(container) = &mut item.items else {
-				return None;
-			};
-			let Some(next_item) = container.get_mut(id) else {
-				return None;
-			};
+			let Some(container) = &mut item.items else { return None };
+			let Some(next_item) = container.get_mut(id) else { return None };
+			item = next_item;
+		}
+		Some(item)
+	}
+
+	pub fn get_at_path<'c>(&'c self, id_path: &ItemPath) -> Option<&'c Item> {
+		let mut iter = id_path.iter();
+		let Some(first_id) = iter.next() else { return None };
+		let Some(mut item) = self.get_item(first_id) else { return None };
+		for id in iter {
+			let Some(container) = &item.items else { return None };
+			let Some(next_item) = container.get_item(id) else { return None };
 			item = next_item;
 		}
 		Some(item)

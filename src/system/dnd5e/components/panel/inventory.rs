@@ -222,7 +222,7 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 		None => {
 			let container = state.inventory();
 			title = "Equipment".into();
-			wallet = Some(html! { <WalletInlineButton id={None} /> });
+			wallet = Some(html! { <WalletInlineButton /> });
 			rows = {
 				let all_items = container.iter_by_name();
 				let no_containers = all_items.filter(|(_, entry)| entry.as_item().items.is_none());
@@ -247,15 +247,11 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 			open_modal = None;
 		}
 		Some(container_id) => {
-			let Some(item) = state.inventory().get_item(container_id) else {
-				return Html::default();
-			};
-			let Some(container) = &item.items else {
-				return Html::default();
-			};
+			let Some(item) = state.inventory().get_item(container_id) else { return Html::default() };
+			let Some(container) = &item.items else { return Html::default() };
+			let item_path = ItemPath::from(container_id);
 			title = item.name.clone().into();
-			wallet =
-				(!container.wallet().is_empty()).then(|| html! { <WalletInlineButton id={container_id.clone()} /> });
+			wallet = (!container.wallet().is_empty()).then(|| html! { <WalletInlineButton {item_path} /> });
 			rows = {
 				let container_path = ItemPath::from(container_id);
 				let items = container.iter_by_name();

@@ -1,17 +1,17 @@
 use crate::{
 	components::context_menu,
-	page::characters::sheet::{joined::editor::AutoExchangeSwitch, CharacterHandle, MutatorImpact},
+	page::characters::sheet::{joined::editor::AutoExchangeSwitch, CharacterHandle},
 	system::dnd5e::{
-		components::{glyph, validate_uint_only},
+		change::inventory::UpdateWallet,
+		components::{glyph, panel::make_item_ref_opt, validate_uint_only},
 		data::{
-			character::Persistent,
 			currency::{self, Wallet},
+			item::container::item::ItemPath,
 		},
 	},
 	utility::InputExt,
 };
 use itertools::Itertools;
-use uuid::Uuid;
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -35,53 +35,33 @@ pub fn WalletInline(WalletInlineProps { wallet }: &WalletInlineProps) -> Html {
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct WalletContainerProps {
-	pub id: Option<Uuid>,
+	#[prop_or_default]
+	pub item_path: Option<ItemPath>,
 }
 
-fn get_wallet<'c>(state: &'c CharacterHandle, id: &Option<Uuid>) -> Option<&'c Wallet> {
+fn get_wallet<'c>(state: &'c CharacterHandle, id: &Option<ItemPath>) -> Option<&'c Wallet> {
 	match id {
 		None => Some(state.inventory().wallet()),
 		Some(id) => {
-			let Some(item) = state.inventory().get_item(id) else {
-				return None;
-			};
-			let Some(container) = &item.items else {
-				return None;
-			};
+			let Some(item) = state.inventory().get_at_path(id) else { return None };
+			let Some(container) = &item.items else { return None };
 			Some(container.wallet())
 		}
 	}
 }
 
-fn get_wallet_mut<'c>(persistent: &'c mut Persistent, id: &Option<Uuid>) -> Option<&'c mut Wallet> {
-	match id {
-		None => Some(persistent.inventory.wallet_mut()),
-		Some(id) => {
-			let Some(item) = persistent.inventory.get_mut(id) else {
-				return None;
-			};
-			let Some(container) = &mut item.items else {
-				return None;
-			};
-			Some(container.wallet_mut())
-		}
-	}
-}
-
 #[function_component]
-pub fn WalletInlineButton(WalletContainerProps { id }: &WalletContainerProps) -> Html {
+pub fn WalletInlineButton(WalletContainerProps { item_path }: &WalletContainerProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let onclick = context_menu::use_control_action({
-		let id = id.clone();
+		let item_path = item_path.clone();
 		move |evt: MouseEvent, _context| {
 			evt.stop_propagation();
-			context_menu::Action::open_root("Coin Pouch", html!(<Modal {id} />))
+			context_menu::Action::open_root("Coin Pouch", html!(<Modal item_path={item_path.clone()} />))
 		}
 	});
 
-	let Some(wallet) = get_wallet(&state, id).cloned() else {
-		return Html::default();
-	};
+	let Some(wallet) = get_wallet(&state, item_path).cloned() else { return Html::default() };
 	html! {
 		<span class="wallet-inline ms-auto py-2" {onclick}>
 			{match wallet.is_empty() {
@@ -93,11 +73,9 @@ pub fn WalletInlineButton(WalletContainerProps { id }: &WalletContainerProps) ->
 }
 
 #[function_component]
-fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
+fn Modal(WalletContainerProps { item_path }: &WalletContainerProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let Some(wallet) = get_wallet(&state, id) else {
-		return Html::default();
-	};
+	let Some(wallet) = get_wallet(&state, item_path) else { return Html::default() };
 	let adjustment_wallet = use_state(|| Wallet::default());
 	let balance_display = {
 		let total_value_gold = wallet.total_value() / currency::Kind::Gold.multiplier();
@@ -134,9 +112,7 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 		let on_change_adj_coin = Callback::from({
 			let wallet = adjustment_wallet.clone();
 			move |(evt, coin): (web_sys::Event, currency::Kind)| {
-				let Some(value) = evt.input_value_t::<u64>() else {
-					return;
-				};
+				let Some(value) = evt.input_value_t::<u64>() else { return };
 				wallet.set({
 					let mut wallet = (*wallet).clone();
 					wallet[coin] = value;
@@ -144,73 +120,58 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 				});
 			}
 		});
-		let onclick_add = Callback::from({
+		let take_adjustments = Callback::from({
 			let adjustments = adjustment_wallet.clone();
-			let id = id.clone();
-			let state = state.clone();
-			move |_| {
-				let adjustments = {
-					let wallet = *adjustments;
-					adjustments.set(Wallet::default());
-					wallet
-				};
-				state.dispatch(Box::new(move |persistent: &mut Persistent| {
-					if let Some(target) = get_wallet_mut(persistent, &id) {
-						*target += adjustments;
-					}
-					MutatorImpact::None
-				}));
+			move |_: ()| -> Wallet {
+				let wallet = *adjustments;
+				adjustments.set(Wallet::default());
+				wallet
 			}
 		});
-		let onclick_remove = Callback::from({
-			let adjustments = adjustment_wallet.clone();
-			let id = id.clone();
+		let onclick_add = state.dispatch_change({
+			let take_adjustments = take_adjustments.clone();
+			let path = item_path.clone();
 			let state = state.clone();
 			move |_| {
-				if !contains_enough {
-					return;
+				let adjustments = take_adjustments.emit(());
+				if adjustments.is_empty() {
+					return None;
 				}
-				let adjustments = {
-					let wallet = *adjustments;
-					adjustments.set(Wallet::default());
-					wallet
-				};
-				state.dispatch(Box::new(move |persistent: &mut Persistent| {
-					let Some(target) = get_wallet_mut(persistent, &id) else {
-						return MutatorImpact::None;
-					};
-					assert!(target.contains(&adjustments, auto_exchange));
-					target.remove(adjustments, auto_exchange);
-					MutatorImpact::None
-				}));
+				let item_ref = make_item_ref_opt(&state, &path);
+				Some(UpdateWallet::add(adjustments, item_ref))
 			}
 		});
-		let onclick_clear = Callback::from({
-			let wallet = adjustment_wallet.clone();
+		let onclick_remove = contains_enough.then_some(state.dispatch_change({
+			let take_adjustments = take_adjustments.clone();
+			let path = item_path.clone();
+			let state = state.clone();
 			move |_| {
-				wallet.set(Wallet::default());
+				let adjustments = take_adjustments.emit(());
+				if adjustments.is_empty() {
+					return None;
+				}
+				let item_ref = make_item_ref_opt(&state, &path);
+				Some(UpdateWallet::remove(adjustments, item_ref))
+			}
+		}));
+		let onclick_clear = Callback::from({
+			let adjustments = adjustment_wallet.clone();
+			move |_| {
+				adjustments.set(Wallet::default());
 			}
 		});
 		let mut exchange_div_classes = classes!("ms-auto");
 		if !auto_exchange {
 			exchange_div_classes.push("v-hidden");
 		}
-		let onclick_exchange = Callback::from({
-			let id = id.clone();
+		let onclick_exchange = auto_exchange.then_some(state.dispatch_change({
+			let path = item_path.clone();
 			let state = state.clone();
 			move |_| {
-				if !auto_exchange {
-					return;
-				}
-				state.dispatch(Box::new(move |persistent: &mut Persistent| {
-					let Some(target) = get_wallet_mut(persistent, &id) else {
-						return MutatorImpact::None;
-					};
-					target.normalize();
-					MutatorImpact::None
-				}));
+				let item_ref = make_item_ref_opt(&state, &path);
+				Some(UpdateWallet::exchange(item_ref))
 			}
-		});
+		}));
 		html! {
 			<div>
 				<div class="d-flex">

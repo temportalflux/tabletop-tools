@@ -8,9 +8,9 @@ use crate::{
 	page::characters::sheet::{joined::editor::CollapsableCard, CharacterHandle},
 	system::{
 		dnd5e::{
-			change::{self, inventory::ItemRef},
+			change,
 			components::{
-				panel::{get_item_path_names, AddItemButton, AddItemOperation, ItemInfo},
+				panel::{make_item_ref_opt, AddItemButton, AddItemOperation, ItemInfo},
 				validate_uint_only, GeneralProp, WalletInline,
 			},
 			data::{
@@ -173,10 +173,7 @@ fn BrowsedItemCard(props: &GeneralProp<ItemLocation>) -> Html {
 		let state = state.clone();
 		let item = item.clone();
 		move |container: Option<ItemPath>| {
-			let container = match container {
-				None => None,
-				Some(path) => Some(ItemRef { name: get_item_path_names(&state, &path), path }),
-			};
+			let container = make_item_ref_opt(&state, &container);
 			Some(change::inventory::AddItem { item: item.clone(), container })
 		}
 	});
@@ -230,10 +227,7 @@ fn AddItemActions(AddItemActionsProps { id, batch_size, worth }: &AddItemActions
 			let state = state.clone();
 			move |args: (Item, AddItemArgs)| {
 				let (item, (amount, cost, container)) = args;
-				let container = match container {
-					None => None,
-					Some(path) => Some(ItemRef { name: get_item_path_names(&state, &path), path }),
-				};
+				let container = make_item_ref_opt(&state, &container);
 				Some(change::inventory::PurchaseItem { item, amount, cost, container })
 			}
 		}),

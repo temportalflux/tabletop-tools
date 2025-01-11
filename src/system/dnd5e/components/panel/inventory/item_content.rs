@@ -64,6 +64,15 @@ pub fn get_item_path_names<'c>(state: &'c CharacterHandle, id_path: &ItemPath) -
 	let iter = iter.map(|item| item.name.clone());
 	iter.collect()
 }
+pub fn make_item_ref<'c>(state: &'c CharacterHandle, path: ItemPath) -> ItemRef {
+	ItemRef { name: get_item_path_names(state, &path), path }
+}
+pub fn make_item_ref_opt<'c>(state: &'c CharacterHandle, path: &Option<ItemPath>) -> Option<ItemRef> {
+	match path.clone() {
+		None => None,
+		Some(path) => Some(make_item_ref(state, path)),
+	}
+}
 pub fn get_inventory_item<'c>(state: &'c CharacterHandle, id_path: &ItemPath) -> Option<&'c Item> {
 	let mut iter = id_path.iter();
 	let mut item = None;
@@ -666,7 +675,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 		(_, ItemLocation::Inventory { id_path }) => Some({
 			let onchange = state.dispatch_change({
 				let state = state.clone();
-				let item_ref = ItemRef { path: id_path.clone(), name: get_item_path_names(&state, &id_path) };
+				let item_ref = make_item_ref(&state, id_path.clone());
 				move |evt: web_sys::Event| {
 					let tag = evt.select_value()?;
 					let item = get_inventory_item(&state, &item_ref.path)?;

@@ -103,6 +103,7 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_change::<RemoveItem>();
 	registry.register_change::<TempHP>();
 	registry.register_change::<ToggleInspiration>();
+	registry.register_change::<UpdateWallet>();
 
 	registry
 }
