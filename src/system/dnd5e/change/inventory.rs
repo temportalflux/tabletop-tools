@@ -1,6 +1,12 @@
 mod add_item;
 pub use add_item::*;
 
+mod append;
+pub use append::*;
+
+mod change_amount;
+pub use change_amount::*;
+
 mod equip;
 pub use equip::*;
 

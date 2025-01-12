@@ -7,13 +7,14 @@ use crate::{
 	utility::NotInList,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ApplyCondition {
 	Add(Condition),
 	RemoveCustom(usize),
 	RemoveId(SourceId),
+	Append(Vec<Condition>, /*feature path*/ PathBuf),
 }
 
 crate::impl_trait_eq!(ApplyCondition);
@@ -32,6 +33,11 @@ impl Change for ApplyCondition {
 			}
 			Self::RemoveCustom(idx) => {
 				character.persistent_mut().conditions.remove_custom(*idx);
+			}
+			Self::Append(conditions, _feature_path) => {
+				for condition in conditions {
+					character.persistent_mut().conditions.insert(condition.clone());
+				}
 			}
 		}
 		// So that the contents of any added or removed condition is recompiled
@@ -57,7 +63,12 @@ impl FromKdl<NodeContext> for ApplyCondition {
 					)))
 				}
 			}
-			s => Err(NotInList(s.to_owned(), vec!["add", "remove"]).into()),
+			"append" => {
+				let feature_path = node.next_str_req_t()?;
+				let conditions = node.query_all_t("scope() > condition")?;
+				Ok(Self::Append(conditions, feature_path))
+			}
+			s => Err(NotInList(s.to_owned(), vec!["add", "remove", "append"]).into()),
 		}
 	}
 }
@@ -77,6 +88,11 @@ impl AsKdl for ApplyCondition {
 			Self::RemoveCustom(idx) => {
 				node.entry("remove");
 				node.entry(*idx as i64);
+			}
+			Self::Append(conditions, feature_path) => {
+				node.entry("append");
+				node.entry(feature_path.to_str().unwrap());
+				node.children(("condition", conditions.iter()));
 			}
 		}
 		node

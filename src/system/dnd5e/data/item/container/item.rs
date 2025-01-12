@@ -132,10 +132,6 @@ impl<T> ItemContainer<T> {
 		&self.wallet
 	}
 
-	pub fn wallet_mut(&mut self) -> &mut Wallet {
-		&mut self.wallet
-	}
-
 	pub fn iter_by_name(&self) -> impl Iterator<Item = (&Uuid, &T)> {
 		self.itemids_by_name.iter().filter_map(|id| self.items_by_id.get(&id).map(|item| (id, item)))
 	}
@@ -196,18 +192,6 @@ impl<T: AsItem> ItemContainer<T> {
 
 	pub fn push(&mut self, item: Item) -> Uuid {
 		self.push_entry(T::from_item(item))
-	}
-
-	pub fn insert(&mut self, item: Item) -> Uuid {
-		if item.can_stack() {
-			for (id, entry) in &mut self.items_by_id {
-				if entry.as_item().can_add_to_stack(&item) {
-					entry.as_item_mut().add_to_stack(item);
-					return id.clone();
-				}
-			}
-		}
-		self.push(item)
 	}
 
 	/// Attempts to insert the item into the specified item container.
@@ -296,6 +280,29 @@ impl<T: AsItem> ItemContainer<T> {
 		}
 
 		Ok(())
+	}
+}
+
+pub trait ItemContainerTrait {
+	fn insert(&mut self, item: Item) -> Uuid;
+	fn wallet_mut(&mut self) -> &mut Wallet;
+}
+
+impl<T: AsItem> ItemContainerTrait for ItemContainer<T> {
+	fn insert(&mut self, item: Item) -> Uuid {
+		if item.can_stack() {
+			for (id, entry) in &mut self.items_by_id {
+				if entry.as_item().can_add_to_stack(&item) {
+					entry.as_item_mut().add_to_stack(item);
+					return id.clone();
+				}
+			}
+		}
+		self.push(item)
+	}
+
+	fn wallet_mut(&mut self) -> &mut Wallet {
+		&mut self.wallet
 	}
 }
 

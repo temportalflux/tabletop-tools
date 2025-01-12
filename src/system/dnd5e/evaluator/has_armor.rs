@@ -243,7 +243,7 @@ mod test {
 
 	mod evaluate {
 		use super::*;
-		use item::container::item::EquipStatus;
+		use item::container::item::{EquipStatus, ItemContainerTrait};
 
 		fn character(kinds: &[(armor::Kind, EquipStatus)], shield: Option<EquipStatus>) -> Character {
 			let mut persistent = Persistent::default();

@@ -5,7 +5,7 @@ use crate::{
 		dnd5e::data::{
 			character::Character,
 			currency::Wallet,
-			item::{self, Item},
+			item::{self, container::item::ItemContainerTrait, Item},
 		},
 		Change,
 	},

@@ -84,13 +84,16 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_generator::<ItemGenerator>();
 
 	registry.register_change::<AddItem>();
+	registry.register_change::<AppendItems>();
 	registry.register_change::<ApplyAbilityScores>();
+	registry.register_change::<ApplyClass>();
 	registry.register_change::<ApplyCondition>();
 	registry.register_change::<ApplyDescription>();
 	registry.register_change::<ApplyHitDice>();
 	registry.register_change::<ApplyLimitedUses>();
 	registry.register_change::<ApplyItemUserTag>();
 	registry.register_change::<ApplyNotes>();
+	registry.register_change::<ChangeItemAmount>();
 	registry.register_change::<ConsumeItemSpell>();
 	registry.register_change::<ConsumeSpellSlot>();
 	registry.register_change::<DeathSaves>();
@@ -103,6 +106,7 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_change::<RemoveItem>();
 	registry.register_change::<TempHP>();
 	registry.register_change::<ToggleInspiration>();
+	registry.register_change::<UpdateSettings>();
 	registry.register_change::<UpdateWallet>();
 
 	registry

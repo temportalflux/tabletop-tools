@@ -1,6 +1,6 @@
 use crate::{
-	page::characters::sheet::{CharacterHandle, MutatorImpact},
-	system::dnd5e::{change::ApplyDescription, data::character::Persistent},
+	page::characters::sheet::CharacterHandle,
+	system::dnd5e::change::{ApplyDescription, UpdateSettings},
 	utility::InputExt,
 };
 use yew::prelude::*;
@@ -111,17 +111,9 @@ fn SettingsEditor() -> Html {
 #[function_component]
 pub fn AutoExchangeSwitch() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let onchange = Callback::from({
-		let state = state.clone();
-		move |evt: web_sys::Event| {
-			let Some(value) = evt.input_checked() else {
-				return;
-			};
-			state.dispatch(Box::new(move |persistent: &mut Persistent| {
-				persistent.settings.currency_auto_exchange = value;
-				MutatorImpact::None
-			}));
-		}
+	let onchange = state.dispatch_change(|evt: web_sys::Event| {
+		let value = evt.input_checked()?;
+		Some(UpdateSettings::AutoExchange(value))
 	});
 	html! {
 		<div class="form-check form-switch">

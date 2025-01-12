@@ -2,7 +2,7 @@ use super::ItemRef;
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
-		dnd5e::data::{character::Character, currency::Wallet},
+		dnd5e::data::{character::Character, currency::Wallet, item::container::item::ItemContainerTrait},
 		Change,
 	},
 	utility::NotInList,

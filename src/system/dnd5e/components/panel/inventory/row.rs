@@ -1,9 +1,12 @@
 use super::InventoryItemProps;
 use crate::{
 	components::context_menu,
-	page::characters::sheet::{CharacterHandle, MutatorImpact},
+	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
-		change::{self, inventory::EquipItem},
+		change::{
+			self,
+			inventory::{ChangeItemAmount, EquipItem},
+		},
 		components::panel::{
 			get_inventory_item, inventory::equip_toggle::ItemRowEquipBox, make_item_ref, AddItemButton,
 			AddItemOperation, ItemBodyProps, ItemInfo, ItemLocation,
@@ -80,16 +83,9 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 	};
 	match &item.kind {
 		item::Kind::Simple { .. } => {
-			item_props.on_quantity_changed = Some(state.new_dispatch({
-				let id_path = id_path.clone();
-				move |amt, persistent| {
-					if let Some(item) = persistent.inventory.get_mut_at_path(&id_path) {
-						if let item::Kind::Simple { count } = &mut item.kind {
-							*count = amt;
-						}
-					}
-					MutatorImpact::None
-				}
+			item_props.on_quantity_changed = Some(state.dispatch_change({
+				let item_ref = make_item_ref(&state, id_path.clone());
+				move |amount| Some(ChangeItemAmount { item: item_ref.clone(), amount })
 			}));
 		}
 		item::Kind::Equipment(_equipment) => {

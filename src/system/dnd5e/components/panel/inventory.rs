@@ -9,8 +9,7 @@ use crate::{
 	system::{
 		self,
 		dnd5e::{
-			components::{WalletInline, WalletInlineButton},
-			data::{
+			change::inventory::AppendItems, components::{WalletInline, WalletInlineButton}, data::{
 				character::{IndirectItem, Persistent, StartingEquipment},
 				currency::Wallet,
 				item::{
@@ -19,7 +18,7 @@ use crate::{
 					Item,
 				},
 				Indirect,
-			},
+			}
 		},
 		SourceId, System,
 	},
@@ -452,15 +451,12 @@ fn BrowseStartingEquipment() -> Html {
 				}
 				// finally, actually add the wallet and items to the inventory,
 				// and then close the details
-				state.dispatch(move |persistent| {
-					*persistent.inventory.wallet_mut() += selected_equipment.wallet;
-					for item in selected_equipment.items {
-						persistent.inventory.insert(item);
-					}
-					close_details.emit(());
-					// recompiling for resolving item indirection
-					MutatorImpact::Recompile
+				state.add_change(AppendItems {
+					container: None,
+					items: selected_equipment.items,
+					currency: selected_equipment.wallet,
 				});
+				close_details.emit(());
 				Ok(()) as Result<(), crate::database::FetchError>
 			});
 		}

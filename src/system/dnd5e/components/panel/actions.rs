@@ -6,18 +6,18 @@ use crate::{
 	},
 	page::characters::sheet::{
 		joined::editor::{description, mutator_list},
-		CharacterHandle, MutatorImpact,
+		CharacterHandle,
 	},
 	system::{
 		dnd5e::{
-			change::ApplyNotes,
+			change::{ApplyCondition, ApplyNotes},
 			components::{
 				glyph::{DamageTypeGlyph, RollModifier},
 				UsesCounter,
 			},
 			data::{
 				action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKindValue},
-				character::{ActionBudgetKind, Character, Persistent},
+				character::{ActionBudgetKind, Character},
 				roll::{Modifier, Roll, RollSet},
 				Ability, AreaOfEffect, Condition, DamageRoll, DamageType, Feature, IndirectCondition,
 			},
@@ -560,9 +560,10 @@ fn CollapsedFeature(ActionProps { entry }: &ActionProps) -> Html {
 #[function_component]
 fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
+	let feature_path = Arc::new(entry.feature_path.clone());
 
 	let onclick = context_menu::use_control_action({
-		let feature_path = Arc::new(entry.feature_path.clone());
+		let feature_path = feature_path.clone();
 		let feature_name = AttrValue::from(entry.feature.name.clone());
 		move |_, _context| {
 			context_menu::Action::open_root(feature_name.clone(), html!(<Modal path={feature_path.clone()} />))
@@ -604,19 +605,12 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 					});
 					let conditions = iter.collect::<Vec<_>>();
 
-					let onclick = Callback::from({
-						let state = state.clone();
+					let onclick = state.dispatch_change({
+						let feature_path = feature_path.clone();
 						let conditions_to_apply = conditions.clone();
 						move |evt: MouseEvent| {
 							evt.stop_propagation();
-							let conditions_to_apply = conditions_to_apply.clone();
-							state.dispatch(Box::new(move |persistent: &mut Persistent| {
-								// TODO: Applying a condition should include the path to the feature which caused it (if it was not manually added)
-								for condition in &*conditions_to_apply {
-									persistent.conditions.insert(condition.clone());
-								}
-								MutatorImpact::Recompile
-							}));
+							Some(ApplyCondition::Append(conditions_to_apply.clone(), (*feature_path).clone()))
 						}
 					});
 

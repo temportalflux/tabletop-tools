@@ -3,10 +3,10 @@ use crate::{
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
 		Spinner,
 	},
-	page::characters::sheet::{joined::editor::mutator_list, CharacterHandle, MutatorImpact},
+	page::characters::sheet::{joined::editor::mutator_list, CharacterHandle},
 	system::dnd5e::{
 		change,
-		data::{character::Persistent, roll::Die, Class, Level},
+		data::{roll::Die, Class, Level},
 		DnD5e,
 	},
 	utility::InputExt,
@@ -101,18 +101,13 @@ fn ClassBrowser(ClassBrowserProps { on_added }: &ClassBrowserProps) -> Html {
 	let update = use_force_update();
 	let on_add_class = use_typed_fetch_callback(
 		"Add Class".into(),
-		Callback::from({
-			let state = state.clone();
+		state.dispatch_change({
 			let on_added = on_added.clone();
 			let update = update.clone();
-			move |mut class_to_add: Class| {
-				class_to_add.current_level = 1;
-				state.dispatch(Box::new(move |persistent: &mut Persistent| {
-					persistent.add_class(class_to_add);
-					MutatorImpact::Recompile
-				}));
+			move |class_to_add: Class| {
 				on_added.emit(());
 				update.force_update();
+				Some(change::ApplyClass::add(class_to_add))
 			}
 		}),
 	);
@@ -160,51 +155,28 @@ fn ClassBrowser(ClassBrowserProps { on_added }: &ClassBrowserProps) -> Html {
 #[function_component]
 fn ActiveClassList() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let onclick_add = Callback::from({
-		let state = state.clone();
-		move |idx: usize| {
-			state.dispatch(Box::new(move |persistent: &mut Persistent| {
-				let Some(class) = persistent.classes.get_mut(idx) else {
-					return MutatorImpact::None;
-				};
-				class.current_level += 1;
-				// TODO: Only recompile on exit
-				MutatorImpact::Recompile
-			}));
-		}
-	});
-
-	let remove_class = Callback::from({
-		let state = state.clone();
-		move |idx| {
-			state.dispatch(Box::new(move |persistent: &mut Persistent| {
-				let _ = persistent.classes.remove(idx);
-				// TODO: Only recompile on exit
-				MutatorImpact::Recompile
-			}));
-		}
-	});
-	let onclick_remove = Callback::from({
-		let state = state.clone();
-		move |idx: usize| {
-			state.dispatch(Box::new(move |persistent: &mut Persistent| {
-				let remove_class = {
-					let Some(class) = persistent.classes.get_mut(idx) else {
-						return MutatorImpact::None;
-					};
-					class.current_level = class.current_level.saturating_sub(1);
-					class.current_level == 0
-				};
-				if remove_class {
-					let _ = persistent.classes.remove(idx);
-				}
-				// TODO: Only recompile on exit
-				MutatorImpact::Recompile
-			}));
-		}
+	let set_class_level = state.dispatch_change(|(class_id, level)| {
+		Some(match level {
+			0 => change::ApplyClass::remove(class_id),
+			_ => change::ApplyClass::set_level(class_id, level),
+		})
 	});
 	html! {<>
-		{state.persistent().classes.iter().enumerate().map(|(idx, class)| {
+		{state.persistent().classes.iter().map(|class| {
+			let onclick_removeclass = state.dispatch_change({
+				let class_id = class.id.unversioned();
+				move |_| Some(change::ApplyClass::remove(class_id.clone()))
+			});
+			let onclick_addlevel = set_class_level.reform({
+				let class_id = class.id.unversioned();
+				let level = class.current_level.saturating_add(1);
+				move |_| (class_id.clone(), level)
+			});
+			let onclick_removelevel = set_class_level.reform({
+				let class_id = class.id.unversioned();
+				let level = class.current_level.saturating_sub(1);
+				move |_| (class_id.clone(), level)
+			});
 			html! {
 				<div class="card my-2">
 					<div class="card-header d-flex">
@@ -212,7 +184,7 @@ fn ActiveClassList() -> Html {
 						<button
 							type="button"
 							class="btn-close ms-auto" aria-label="Close"
-							onclick={remove_class.reform(move |_| idx)}
+							onclick={onclick_removeclass}
 						/>
 					</div>
 					<div class="card-body">
@@ -220,12 +192,12 @@ fn ActiveClassList() -> Html {
 						<div class="d-flex justify-content-between mt-3">
 							<button
 								type="button" class="btn btn-success mx-2"
-								onclick={onclick_add.reform(move |_| idx)}
+								onclick={onclick_addlevel}
 							>{"Add Level"}</button>
 							<h5>{"Levels"}</h5>
 							<button
 								type="button" class="btn btn-danger mx-2"
-								onclick={onclick_remove.reform(move |_| idx)}
+								onclick={onclick_removelevel}
 							>{match class.current_level {
 								1 => "Remove Class".to_owned(),
 								_ => format!("Remove Level {}", class.current_level),
