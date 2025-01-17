@@ -14,6 +14,7 @@ columnSorting:
 
 ## Backlog
 
+- [phb-2014-backgrounds](tasks/phb-2014-backgrounds.md)
 - [add-debug-capability-to-rebuild-database-metadata](tasks/add-debug-capability-to-rebuild-database-metadata.md)
 - [autosave](tasks/autosave.md)
 - [spell-info-context-panel](tasks/spell-info-context-panel.md)

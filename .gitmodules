@@ -9,7 +9,7 @@
 	url = git@github.com:flux-tabletop/wotc-oota.git
 [submodule "modules/wotc-phb"]
 	path = modules/wotc-phb
-	url = git@github.com:flux-tabletop/wotc-phb.git
+	url = git@github.com:flux-tabletop/dnd5e-wotc-phb.git
 [submodule "modules/wotc-toa"]
 	path = modules/wotc-toa
 	url = git@github.com:flux-tabletop/wotc-toa.git
@@ -30,7 +30,7 @@
 	url = git@github.com:temportalflux/kdlize.git
 [submodule "modules/wotc-phb2024"]
 	path = modules/wotc-phb2024
-	url = git@github.com:flux-tabletop/wotc-phb2024.git
+	url = git@github.com:flux-tabletop/dnd5e-wotc-phb.git
 [submodule "crates/kdl-rs"]
 	path = crates/kdl-rs
 	url = git@github.com:kdl-org/kdl-rs.git
