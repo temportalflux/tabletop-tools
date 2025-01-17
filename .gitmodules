@@ -1,15 +1,9 @@
-[submodule "modules/basic-rules"]
-	path = modules/basic-rules
-	url = git@github.com:flux-tabletop/dnd5e-basic-rules.git
 [submodule "modules/elf-and-orc"]
 	path = modules/elf-and-orc
 	url = git@github.com:flux-tabletop/elf-and-orc.git
 [submodule "modules/wotc-oota"]
 	path = modules/wotc-oota
 	url = git@github.com:flux-tabletop/wotc-oota.git
-[submodule "modules/wotc-phb"]
-	path = modules/wotc-phb
-	url = git@github.com:flux-tabletop/dnd5e-wotc-phb.git
 [submodule "modules/wotc-toa"]
 	path = modules/wotc-toa
 	url = git@github.com:flux-tabletop/wotc-toa.git
