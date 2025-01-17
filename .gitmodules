@@ -25,3 +25,15 @@
 [submodule "crates/kdl-rs"]
 	path = crates/kdl-rs
 	url = git@github.com:kdl-org/kdl-rs.git
+[submodule "modules/wotc-phb/2014"]
+	path = modules/wotc-phb/2014
+	url = git@github.com:flux-tabletop/dnd5e-wotc-phb.git
+[submodule "modules/wotc-phb/2024"]
+	path = modules/wotc-phb/2024
+	url = git@github.com:flux-tabletop/dnd5e-wotc-phb.git
+[submodule "modules/dnd5e-basic-rules/2014"]
+	path = modules/dnd5e-basic-rules/2014
+	url = git@github.com:flux-tabletop/dnd5e-basic-rules.git
+[submodule "modules/dnd5e-basic-rules/2024"]
+	path = modules/dnd5e-basic-rules/2024
+	url = git@github.com:flux-tabletop/dnd5e-basic-rules.git
