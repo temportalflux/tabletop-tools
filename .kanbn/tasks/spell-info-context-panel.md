@@ -1,10 +1,11 @@
 ---
 created: 2024-07-20T21:17:46.139Z
-updated: 2024-07-27T16:23:48.438Z
+updated: 2025-01-17T13:29:58.515Z
 assigned: ""
 progress: 0
 tags:
   - App
+  - v1
 ---
 
 # Spell Info Context Panel

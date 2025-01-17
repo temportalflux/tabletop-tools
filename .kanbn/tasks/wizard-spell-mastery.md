@@ -1,10 +1,11 @@
 ---
 created: 2024-07-11T13:08:47.401Z
-updated: 2024-07-11T13:23:54.997Z
+updated: 2025-01-17T13:33:18.111Z
 assigned: ""
 progress: 0
 tags:
   - Content
+  - v1
 ---
 
 # Wizard "Spell Mastery"

@@ -1,10 +1,11 @@
 ---
 created: 2024-07-11T13:34:35.274Z
-updated: 2024-12-31T21:02:00.443Z
+updated: 2025-01-17T13:31:59.288Z
 assigned: ""
 progress: 0
 tags:
   - Capability
+  - v1
 ---
 
 # Spellcasting limited by both slot and uses at the same time

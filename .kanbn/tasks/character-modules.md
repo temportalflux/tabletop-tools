@@ -1,10 +1,11 @@
 ---
 created: 2023-09-20T13:51:58.710Z
-updated: 2024-07-11T13:25:48.968Z
+updated: 2025-01-17T13:29:40.138Z
 assigned: ""
 progress: 0
 tags:
   - App
+  - v1
 ---
 
 # Character Modules
