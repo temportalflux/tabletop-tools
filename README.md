@@ -70,3 +70,7 @@ Having the necessary material components for spells is nigh impossible to track 
 * Tokens, Inspiration, and Concentration
 
 GM-granted Inspiration is often supported as a basic flag on the character sheet, which players can use to roll advantage on some check/test - but things like Bardic inspiration are not supported. There's no way to track what my character is currently concentrating on (e.g. spells). And all of those are forms of tokens, which can be used to adapt rules from other systems (e.g. the flashback mechanic in heist styled gameplay).
+
+* Combat Tracker
+
+Who knows, maybe someday down the road I'll aspire to expand the app to support non-player creatures with a combat & hit-point tracker that shows live data updates as creatures and players take damage or acquire conditions. Thats way down the road though.
