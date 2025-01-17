@@ -3,10 +3,10 @@
 	url = git@github.com:flux-tabletop/elf-and-orc.git
 [submodule "modules/wotc-oota"]
 	path = modules/wotc-oota
-	url = git@github.com:flux-tabletop/wotc-oota.git
+	url = git@github.com:flux-tabletop/dnd5e-wotc-oota.git
 [submodule "modules/wotc-toa"]
 	path = modules/wotc-toa
-	url = git@github.com:flux-tabletop/wotc-toa.git
+	url = git@github.com:flux-tabletop/dnd5e-wotc-toa.git
 [submodule "modules/homebrew"]
 	path = modules/homebrew
 	url = git@github.com:temportalflux/integro-homebrew.git
@@ -27,13 +27,13 @@
 	url = git@github.com:kdl-org/kdl-rs.git
 [submodule "modules/wotc-phb/2014"]
 	path = modules/wotc-phb/2014
-	url = git@github.com:flux-tabletop/dnd5e-wotc-phb.git
+	url = git@github.com:flux-tabletop/dnd5e-wotc-phb-2014.git
 [submodule "modules/wotc-phb/2024"]
 	path = modules/wotc-phb/2024
-	url = git@github.com:flux-tabletop/dnd5e-wotc-phb.git
+	url = git@github.com:flux-tabletop/dnd5e-wotc-phb-2024.git
 [submodule "modules/dnd5e-basic-rules/2014"]
 	path = modules/dnd5e-basic-rules/2014
-	url = git@github.com:flux-tabletop/dnd5e-basic-rules.git
+	url = git@github.com:flux-tabletop/dnd5e-basic-rules-2014.git
 [submodule "modules/dnd5e-basic-rules/2024"]
 	path = modules/dnd5e-basic-rules/2024
-	url = git@github.com:flux-tabletop/dnd5e-basic-rules.git
+	url = git@github.com:flux-tabletop/dnd5e-basic-rules-2024.git
