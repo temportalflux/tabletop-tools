@@ -363,7 +363,7 @@ fn ProjectedRestorations(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 							Some(amount) => format!("{amount} rank {rank}"),
 						});
 						if let Some(list) = crate::utility::list_as_english(iter.collect(), "and") {
-							sections.push(html!(<li>{"Restore "}{list}{"."}</li>));
+							sections.push(html!(<li>{"Restore "}{list}{" spell slots."}</li>));
 						}
 					}
 				},

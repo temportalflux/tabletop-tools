@@ -7,11 +7,11 @@ use crate::{
 				spellcasting::{
 					self, AbilityOrStat, Caster, CastingMethod, Restriction, RitualCapability, Slots, SpellEntry,
 				},
-				Character,
+				Character, RestEffect, RestEntry,
 			},
 			description,
 			spell::{self, Spell},
-			Ability,
+			Ability, Rest,
 		},
 		mutator::ReferencePath,
 		Mutator, SourceId,
@@ -123,35 +123,25 @@ impl Mutator for Spellcasting {
 	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		match &self.0 {
 			Operation::Caster(caster) => {
-				/*
-				// The reset entry for standard spell slots is taken care of by `Persistent::SelectedSpells`
-				// (where the data paths for spell slots are found).
-				// We need to add reset entries for all bonus spell slots at the character's current level.
+				stats.spellcasting_mut().add_caster(caster.clone());
+
+				// Some casters (warlocks) use "bonus" slots, which can reset on a short rest.
+				// All long resets force all spell slots to reset by default (see ApplyRest change-type).
+				// This adds a rest effect for resetting the bonus slots of a spellcaster (literally just supporting warlocks).
 				let current_level = stats.level(Some(&caster.class_name));
 				for slots in &caster.bonus_slots {
-					let Slots::Bonus { reset_on, slots_capacity } = slots else {
-						continue;
-					};
+					let Slots::Bonus { reset_on: Rest::Short, slots_capacity } = slots else { continue };
+
 					// Since we are compiling the character at a specific level, we only need to
 					// submit reset data for the slots granted at that level.
-					if let Some(ranks) = slots_capacity.get(&current_level) {
-						for (rank, amount) in ranks {
-							// Each rank has its own data path and amount of slots granted by this slot-group,
-							// so we need to submit a separate reset for it
-							// (because restore amount is applied to all data paths in an entry).
-							let rank_data_path = stats.persistent().selected_spells.consumed_slots_path(*rank);
-							let entry = crate::system::dnd5e::data::character::RestEntry{
-								source: parent.display.join(format!("{} Spellcasting Slots (Rank {})", caster.name(), *rank)),
-								effect: crate::system::dnd5e::data::character::RestEffect::GrantSpellSlots(Some([
-									(*rank, Some(*amount as u32))
-								].into())),
-							};
-							stats.rest_resets_mut().add(*reset_on, entry);
-						}
-					}
+					let Some(ranks) = slots_capacity.get(&current_level) else { continue };
+
+					let rank_amounts = ranks.iter().map(|(rank, amount)| (*rank, Some(*amount as u32)));
+					stats.rest_resets_mut().add(Rest::Short, RestEntry {
+						source: parent.display.join(format!("{} Spellcasting Slots", caster.name())),
+						effects: vec![RestEffect::GrantSpellSlots(Some(rank_amounts.collect()))],
+					});
 				}
-				*/
-				stats.spellcasting_mut().add_caster(caster.clone());
 			}
 			Operation::AddSource { class_name, spell_ids } => {
 				stats.spellcasting_mut().add_spell_access(class_name, spell_ids, parent);
