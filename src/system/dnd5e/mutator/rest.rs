@@ -1,12 +1,10 @@
-use std::collections::BTreeMap;
-
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
 		dnd5e::data::{
 			character::{Character, RestEffect, RestEntry},
 			description,
-			roll::{EvaluatedRollSet, RollSet},
+			roll::RollSet,
 			Condition, Indirect, Rest,
 		},
 		mutator::{Group, ReferencePath},
@@ -15,6 +13,7 @@ use crate::{
 	utility::{selector::IdPath, NotInList},
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
+use std::collections::BTreeMap;
 
 // Provides a way to change the character when rests are taken.
 #[derive(Clone, Debug, PartialEq)]
@@ -25,12 +24,6 @@ pub struct ApplyWhenRest {
 
 #[derive(Clone, Debug, PartialEq)]
 enum RestMutatorEffect {
-	RestoreCurrentHP,
-	ClearTempHP,
-	GrantTempHP(EvaluatedRollSet),
-	ClearDeathSaves,
-	RestoreHitDice(Option<RollSet>),
-	UseHitDice(RollSet),
 	GrantSpellSlots(Option<BTreeMap<u8, Option<u32>>>),
 	RestoreResourceUses { amount: u32, resource: IdPath },
 	GrantCondition(Indirect<Condition>),
@@ -64,12 +57,6 @@ impl Mutator for ApplyWhenRest {
 		let mut entry = RestEntry { source: parent.display.clone(), effects: Vec::with_capacity(self.effects.len()) };
 		for effect in &self.effects {
 			entry.effects.push(match effect {
-				RestMutatorEffect::RestoreCurrentHP => RestEffect::RestoreCurrentHP,
-				RestMutatorEffect::ClearTempHP => RestEffect::ClearTempHP,
-				RestMutatorEffect::GrantTempHP(evaluated_roll) => RestEffect::GrantTempHP(evaluated_roll.evaluate(stats)),
-				RestMutatorEffect::ClearDeathSaves => RestEffect::ClearDeathSaves,
-				RestMutatorEffect::RestoreHitDice(dice) => RestEffect::RestoreHitDice(*dice),
-				RestMutatorEffect::UseHitDice(dice) => RestEffect::UseHitDice(*dice),
 				RestMutatorEffect::GrantSpellSlots(rank_amounts) => RestEffect::GrantSpellSlots(rank_amounts.clone()),
 				RestMutatorEffect::RestoreResourceUses { amount, resource } => {
 					let Some(data_path) = resource.data() else { return };
@@ -95,12 +82,6 @@ impl FromKdl<NodeContext> for RestMutatorEffect {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
-			"RestoreCurrentHP" => Ok(Self::RestoreCurrentHP),
-			"ClearTempHP" => Ok(Self::ClearTempHP),
-			"GrantTempHP" => Ok(Self::GrantTempHP(EvaluatedRollSet::from_kdl(node)?)),
-			"ClearDeathSaves" => Ok(Self::ClearDeathSaves),
-			"RestoreHitDice" => Ok(Self::RestoreHitDice(node.next_str_opt_t()?)),
-			"UseHitDice" => Ok(Self::UseHitDice(node.next_str_req_t()?)),
 			"GrantSpellSlots" => {
 				let mut rank_amounts = BTreeMap::default();
 				for mut node in node.query_all("scope() > rank")? {
@@ -116,18 +97,9 @@ impl FromKdl<NodeContext> for RestMutatorEffect {
 				Ok(Self::RestoreResourceUses { amount, resource })
 			}
 			"GrantCondition" => Ok(Self::GrantCondition(Indirect::from_kdl(node)?)),
-			id => Err(NotInList(id.to_owned(), vec![
-				"RestoreCurrentHP",
-				"ClearTempHP",
-				"GrantTempHP",
-				"ClearDeathSaves",
-				"RestoreHitDice",
-				"UseHitDice",
-				"GrantSpellSlots",
-				"RestoreResourceUses",
-				"GrantCondition",
-			])
-			.into()),
+			id => {
+				Err(NotInList(id.to_owned(), vec!["GrantSpellSlots", "RestoreResourceUses", "GrantCondition"]).into())
+			}
 		}
 	}
 }
@@ -145,27 +117,6 @@ impl AsKdl for RestMutatorEffect {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		match self {
-			RestMutatorEffect::RestoreCurrentHP => {
-				node.entry("RestoreCurrentHP");
-			}
-			RestMutatorEffect::ClearTempHP => {
-				node.entry("ClearTempHP");
-			}
-			RestMutatorEffect::GrantTempHP(evaluated_roll) => {
-				node.entry("GrantTempHP");
-				node += evaluated_roll.as_kdl();
-			}
-			RestMutatorEffect::ClearDeathSaves => {
-				node.entry("ClearDeathSaves");
-			}
-			RestMutatorEffect::RestoreHitDice(hit_dice) => {
-				node.entry("RestoreHitDice");
-				node.entry(hit_dice.as_ref().map(RollSet::to_string));
-			}
-			RestMutatorEffect::UseHitDice(hit_dice) => {
-				node.entry("UseHitDice");
-				node.entry(hit_dice.to_string());
-			}
 			RestMutatorEffect::GrantSpellSlots(rank_amounts) => {
 				node.entry("GrantSpellSlots");
 				match rank_amounts {

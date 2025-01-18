@@ -1,9 +1,6 @@
 use crate::{
 	kdl_ext::NodeContext,
-	system::{
-		dnd5e::data::{character::Character},
-		Change,
-	},
+	system::{dnd5e::data::character::Character, Change},
 };
 use enum_map::EnumMap;
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
@@ -39,9 +36,7 @@ impl FromKdl<NodeContext> for HealOrDamage {
 		let current = node.next_i64_req()? as u32;
 		let temp = node.next_i64_req()? as u32;
 		let clear_saves = node.get_bool_req("clear_saves")?;
-		Ok(Self {
-			delta, current, temp, clear_saves
-		})
+		Ok(Self { delta, current, temp, clear_saves })
 	}
 }
 

@@ -34,7 +34,7 @@ equipment {
 		}
 	}
 	mutator "spellcasting" "add_prepared" ability="Intelligence" {
-		spell "github://flux-tabletop:dnd5e-basic-rules@dnd5e/spells/enlargeReduce.kdl"
+		spell "github://flux-tabletop:dnd5e-basic-rules-2014@dnd5e/spells/enlargeReduce.kdl"
 		limited_uses {
 			// NOTE: this will mean all existing resources need to be prefixed with `/`, so they are treated as absolute paths instead of relative ones
 			resource "charges" // no path data, relative to parent which is the item
@@ -85,7 +85,10 @@ impl Resource {
 		let restore_amount = reset.get_rate(stats);
 		stats.rest_resets_mut().add(rest, RestEntry {
 			source: path_to_parent.display.clone(),
-			effects: vec![super::character::RestEffect::RestoreResourceUses { data_path: uses_path, amount: restore_amount }],
+			effects: vec![super::character::RestEffect::RestoreResourceUses {
+				data_path: uses_path,
+				amount: restore_amount,
+			}],
 		});
 	}
 

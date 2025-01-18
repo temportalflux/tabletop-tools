@@ -13,6 +13,18 @@ impl From<Roll> for RollSet {
 	}
 }
 
+impl<'a> From<&'a EnumMap<Die, u32>> for RollSet {
+	fn from(value: &'a EnumMap<Die, u32>) -> Self {
+		Self(value.iter().map(|(die, amt)| (die, *amt as i32)).collect(), 0)
+	}
+}
+
+impl Into<EnumMap<Die, u32>> for RollSet {
+	fn into(self) -> EnumMap<Die, u32> {
+		self.0.iter().map(|(die, amt)| (die, *amt as u32)).collect()
+	}
+}
+
 impl FromIterator<Roll> for RollSet {
 	fn from_iter<T: IntoIterator<Item = Roll>>(iter: T) -> Self {
 		let mut set = Self::default();

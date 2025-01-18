@@ -13,7 +13,7 @@ use crate::{
 	},
 	utility::NotInList,
 };
-use enum_map::{enum_map, EnumMap};
+use enum_map::{enum_map, EnumMap, IterMut};
 use std::{
 	collections::{BTreeMap, HashSet},
 	path::{Path, PathBuf},
@@ -359,16 +359,22 @@ impl RestResets {
 	pub fn get(&self, rest: Rest) -> &Vec<RestEntry> {
 		&self.entries[rest]
 	}
+
+	pub fn iter_mut(&mut self) -> impl Iterator<Item = (Rest, &mut Vec<RestEntry>)> + '_ {
+		self.into_iter()
+	}
+}
+impl<'a> IntoIterator for &'a mut RestResets {
+	type Item = (Rest, &'a mut Vec<RestEntry>);
+	type IntoIter = IterMut<'a, Rest, Vec<RestEntry>>;
+
+	fn into_iter(self) -> Self::IntoIter {
+		self.entries.iter_mut()
+	}
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum RestEffect {
-	RestoreCurrentHP,
-	ClearTempHP,
-	GrantTempHP(RollSet),
-	ClearDeathSaves,
-	RestoreHitDice(Option<RollSet>),
-	UseHitDice(RollSet),
 	// None => All to max
 	// [#: None] => rank to max
 	// [#: #] => add an amount of slots for that rank
@@ -380,12 +386,6 @@ impl kdlize::FromKdl<crate::kdl_ext::NodeContext> for RestEffect {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
-			"RestoreCurrentHP" => Ok(Self::RestoreCurrentHP),
-			"ClearTempHP" => Ok(Self::ClearTempHP),
-			"GrantTempHP" => Ok(Self::GrantTempHP(node.next_str_req_t()?)),
-			"ClearDeathSaves" => Ok(Self::ClearDeathSaves),
-			"RestoreHitDice" => Ok(Self::RestoreHitDice(node.next_str_opt_t()?)),
-			"UseHitDice" => Ok(Self::UseHitDice(node.next_str_req_t()?)),
 			"GrantSpellSlots" => {
 				let mut rank_amounts = BTreeMap::default();
 				for mut node in node.query_all("scope() > rank")? {
@@ -401,18 +401,9 @@ impl kdlize::FromKdl<crate::kdl_ext::NodeContext> for RestEffect {
 				Ok(Self::RestoreResourceUses { data_path, amount })
 			}
 			"GrantCondition" => Ok(Self::GrantCondition(Indirect::from_kdl(node)?)),
-			id => Err(NotInList(id.to_owned(), vec![
-				"RestoreCurrentHP",
-				"ClearTempHP",
-				"GrantTempHP",
-				"ClearDeathSaves",
-				"RestoreHitDice",
-				"UseHitDice",
-				"GrantSpellSlots",
-				"RestoreResourceUses",
-				"GrantCondition",
-			])
-			.into()),
+			id => {
+				Err(NotInList(id.to_owned(), vec!["GrantSpellSlots", "RestoreResourceUses", "GrantCondition"]).into())
+			}
 		}
 	}
 }
@@ -420,27 +411,6 @@ impl kdlize::AsKdl for RestEffect {
 	fn as_kdl(&self) -> kdlize::NodeBuilder {
 		let mut node = kdlize::NodeBuilder::default();
 		match self {
-			Self::RestoreCurrentHP => {
-				node.entry("RestoreCurrentHP");
-			}
-			Self::ClearTempHP => {
-				node.entry("ClearTempHP");
-			}
-			Self::GrantTempHP(hit_dice) => {
-				node.entry("GrantTempHP");
-				node.entry(hit_dice.to_string());
-			}
-			Self::ClearDeathSaves => {
-				node.entry("ClearDeathSaves");
-			}
-			Self::RestoreHitDice(hit_dice) => {
-				node.entry("RestoreHitDice");
-				node.entry(hit_dice.as_ref().map(RollSet::to_string));
-			}
-			Self::UseHitDice(hit_dice) => {
-				node.entry("UseHitDice");
-				node.entry(hit_dice.to_string());
-			}
 			Self::GrantSpellSlots(rank_amounts) => {
 				node.entry("GrantSpellSlots");
 				match rank_amounts {

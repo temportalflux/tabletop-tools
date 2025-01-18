@@ -1,17 +1,10 @@
-use super::RestEntry;
 use crate::{
 	kdl_ext::NodeContext,
-	system::{
-		dnd5e::data::{Rest, Spell},
-		SourceId,
-	},
+	system::{dnd5e::data::Spell, SourceId},
 };
 use itertools::Itertools;
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
-use std::{
-	collections::HashMap,
-	path::{Path, PathBuf},
-};
+use std::{collections::HashMap, path::Path};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct SelectedSpells {
@@ -131,13 +124,6 @@ impl SelectedSpells {
 
 	pub fn consumed_slots_path(&self, rank: u8) -> std::path::PathBuf {
 		Path::new("SpellSlots").join(rank.to_string())
-	}
-
-	pub fn reset_on_rest(&self) -> (Rest, RestEntry) {
-		(Rest::Long, RestEntry {
-			effects: vec![super::RestEffect::GrantSpellSlots(None)],
-			source: PathBuf::from("Standard Spellcasting Slots"),
-		})
 	}
 }
 

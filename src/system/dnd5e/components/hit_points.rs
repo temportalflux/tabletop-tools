@@ -749,11 +749,7 @@ fn DeathSaveBoxes(DeathSaveBoxesProps { save }: &DeathSaveBoxesProps) -> Html {
 				false => -1,
 			};
 			let value = state.hit_points().saves[save].saturating_add_signed(delta);
-			Some(hit_points::DeathSaves {
-				save,
-				delta,
-				value,
-			})
+			Some(hit_points::DeathSaves { save, delta, value })
 		}
 	});
 

@@ -1,17 +1,20 @@
 use super::GeneralProp;
 use crate::{
 	components::{context_menu, stop_propagation},
-	page::characters::sheet::{CharacterHandle},
+	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
-		change::{ApplyRest}, components::{glyph::Glyph, validate_uint_only}, data::{
+		change::{ApplyRest, ApplyRestEffect},
+		components::{glyph::Glyph, validate_uint_only},
+		data::{
+			character::RestEffect,
 			roll::{Die, Roll, RollSet},
-			Ability, Rest,
-		}
+			Ability, Indirect, Rest,
+		},
 	},
 	utility::InputExt,
 };
 use enum_map::EnumMap;
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 use yew::prelude::*;
 
 #[function_component]
@@ -38,76 +41,50 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 	let hit_dice_to_consume = use_state_eq(|| HitDiceToConsume::default());
 	let close_modal = context_menu::use_close_fn();
 
-	let constitution_mod = state.ability_modifier(Ability::Constitution, None);
 	let commit_rest = state.dispatch_change({
 		let rest = *value;
 		let hit_dice_to_consume = hit_dice_to_consume.clone();
-		let max_hp = state.max_hit_points().value();
 		let state = state.clone();
 		move |_| {
 			let mut rng = rand::thread_rng();
 
 			let mut change = ApplyRest::from(rest);
 			for reset_entry in state.rest_resets().get(rest) {
-				let mut effects = Vec::with_capacity(reset_entry.effects.len());
 				for effect in &reset_entry.effects {
-					change.push_effect(Some(&reset_entry.source), effect, &state);
-				}
-			}
-
-			if rest == Rest::Short {
-				change.push_effect(None, ApplyRestEffect::GrantHitDiceHP {
-					hit_dice: hit_dice_to_consume.total_rolls,
-					rolled_hp: hit_dice_to_consume.rolled_hp,
-				}, &state);
-
-				/*
-				let hp = hit_dice_to_consume.hp_to_gain(constitution_mod);
-				persistent.hit_points.current += hp;
-				changes.push(format!("Increased hit points by {hp}."));
-
-				for (data_path, amount_used) in hit_dice_to_consume.consumed_uses() {
-					let prev_value = persistent.get_first_selection_at::<u32>(data_path);
-					let prev_value = prev_value.map(Result::ok).flatten().unwrap_or(0);
-					let new_value = prev_value.saturating_add(*amount_used).to_string();
-					persistent.set_selected(data_path, Some(new_value));
-
-					let class_name = data_path.components().next().unwrap().as_os_str();
-					let class_name = class_name.to_str().unwrap();
-					changes.push(format!("Used {amount_used} hit dice from {class_name}."));
-				}
-				*/
-			}
-			/*
-			for entry in &resets {
-				let uses_to_remove = match entry.restore_amount {
-					None => None,
-					Some(roll) => Some(roll.roll(&mut rng)),
-				};
-
-				for data_path in &entry.data_paths {
-					let path_str = data_path.display().to_string();
-					let path_str = path_str.replace("\\", "/");
-
-					let new_value = match &uses_to_remove {
-						None => {
-							changes.push(format!("Restored all uses to {path_str}."));
-							None
+					change.push_effect(Some(&reset_entry.source), match effect {
+						RestEffect::GrantSpellSlots(rank_amounts) => {
+							ApplyRestEffect::GrantSpellSlots(rank_amounts.clone())
 						}
-						Some(gained_uses) => {
-							changes.push(format!("Restored {gained_uses} uses to {path_str}."));
-
-							// Remove the amt of gained uses from the "uses" resource
-							let prev_value = persistent.get_first_selection_at::<u32>(data_path);
-							let prev_value = prev_value.map(Result::ok).flatten().unwrap_or(0);
-							let new_value = prev_value.saturating_add_signed(-*gained_uses);
-							(new_value > 0).then(|| new_value.to_string())
+						RestEffect::RestoreResourceUses { data_path, amount } => {
+							let uses_to_remove = match amount {
+								None => None,
+								Some(roll) => {
+									let amount = roll.roll(&mut rng);
+									let amount = amount.max(0) as u32;
+									Some(amount)
+								}
+							};
+							ApplyRestEffect::RestoreResourceUses { data_path: data_path.clone(), amount: uses_to_remove }
 						}
-					};
-					persistent.set_selected(data_path, new_value);
+						RestEffect::GrantCondition(Indirect::Custom(condition)) => {
+							ApplyRestEffect::GrantCondition(condition.clone())
+						}
+						RestEffect::GrantCondition(Indirect::Id(condition_id)) => {
+							log::error!(target: "character", "Cannot grant condition {condition_id} on rest, it was not fetched from database");
+							continue;
+						}
+					});
 				}
 			}
-			*/
+			match rest {
+				Rest::Short => {
+					change.push_effect(None, ApplyRestEffect::UseHitDice(
+						hit_dice_to_consume.by_die.clone(),
+						hit_dice_to_consume.rolled_hp,
+					));
+				}
+				Rest::Long => {}
+			}
 
 			close_modal.emit(());
 			Some(change)
@@ -132,33 +109,20 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 
 #[derive(Clone, PartialEq, Default)]
 struct HitDiceToConsume {
-	by_data_path: HashMap<PathBuf, u32>,
-	total_rolls: RollSet,
+	by_die: EnumMap<Die, u32>,
 	rolled_hp: u32,
 }
 impl HitDiceToConsume {
-	fn add(&mut self, die: Die, delta: i32, data_path: &PathBuf) {
-		match self.by_data_path.get_mut(data_path) {
-			None if delta > 0 => {
-				self.by_data_path.insert(data_path.clone(), delta as u32);
-			}
-			Some(die_count) if delta > 0 => {
-				*die_count = die_count.saturating_add(delta as u32);
-			}
-			Some(die_count) if delta < 0 => {
-				*die_count = die_count.saturating_sub(-delta as u32);
-			}
-			_ => {}
-		}
-		let delta_roll = Roll::from((delta.abs(), die));
-		match delta > 0 {
-			true => self.total_rolls.push(delta_roll),
-			false => self.total_rolls.remove(delta_roll),
-		}
+	fn add(&mut self, die: Die, delta: i32) {
+		self.by_die[die] = self.by_die[die].saturating_add_signed(delta);
+	}
+
+	fn as_rollset(&self) -> RollSet {
+		RollSet::from(&self.by_die)
 	}
 
 	fn is_empty(&self) -> bool {
-		self.total_rolls.is_empty()
+		self.as_rollset().is_empty()
 	}
 
 	fn has_valid_input(&self) -> bool {
@@ -166,20 +130,16 @@ impl HitDiceToConsume {
 	}
 
 	fn as_equation_str(&self) -> String {
-		self.total_rolls.to_string()
+		self.as_rollset().to_string()
 	}
 
 	fn total_num_rolls(&self) -> u32 {
-		self.total_rolls.min().unsigned_abs()
+		self.as_rollset().min().unsigned_abs()
 	}
 
 	fn hp_to_gain(&self, constitution_mod: i32) -> u32 {
 		let roll_count = self.total_num_rolls() as i32;
 		((self.rolled_hp as i32) + roll_count * constitution_mod).max(0) as u32
-	}
-
-	fn consumed_uses(&self) -> impl Iterator<Item = (&PathBuf, &u32)> + '_ {
-		self.by_data_path.iter()
 	}
 }
 
@@ -203,9 +163,9 @@ fn HitDiceSection(props: &GeneralProp<UseStateHandle<HitDiceToConsume>>) -> Html
 
 	let on_dice_to_consume_changed = Callback::from({
 		let hit_dice_to_consume = hit_dice_to_consume.clone();
-		move |(die, delta, data_path): (Die, i32, Arc<PathBuf>)| {
+		move |(die, delta): (Die, i32)| {
 			let mut dice_map = (*hit_dice_to_consume).clone();
-			dice_map.add(die, delta, &*data_path);
+			dice_map.add(die, delta);
 			hit_dice_to_consume.set(dice_map);
 		}
 	});
@@ -224,10 +184,7 @@ fn HitDiceSection(props: &GeneralProp<UseStateHandle<HitDiceToConsume>>) -> Html
 				<HitDiceUsageInput
 					max_uses={*capacity as u32}
 					data_path={selector.get_data_path()}
-					on_change={on_dice_to_consume_changed.reform({
-						let data_path = Arc::new(selector.get_data_path().unwrap_or_default());
-						move |delta: i32| (die, delta, data_path.clone())
-					})}
+					on_change={on_dice_to_consume_changed.reform(move |delta: i32| (die, delta))}
 				/>
 			</div>
 		});
@@ -391,35 +348,65 @@ fn ProjectedRestorations(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 		}
 		Rest::Short => {}
 	}
-	for rest in value.resets_to_apply() {
-		for entry in state.rest_resets().get(rest) {
-			let amt = match entry.restore_amount() {
-				None => "all".to_owned(),
-				Some(roll_set) => roll_set.to_string(),
-			};
-			let source_str = crate::data::as_feature_path_text(entry.source()).unwrap_or_default();
-			for data_path in entry.data_paths() {
-				let adjusted_path = match (data_path.ends_with("uses"), data_path.parent()) {
-					(true, Some(without_uses)) => without_uses,
-					(false, _) | (true, None) => data_path.as_ref(),
-				};
-				match entry.source() == data_path {
-					true => {
-						sections.push(html!(<li>
-							{"Restore "}{&amt}{" uses of "}{&source_str}{"."}
-						</li>));
+	for reset_entry in state.rest_resets().get(*value) {
+		for effect in &reset_entry.effects {
+			let source_str = crate::data::as_feature_path_text(&reset_entry.source).unwrap_or_default();
+			match effect {
+				RestEffect::GrantSpellSlots(rank_amounts) => match rank_amounts {
+					None => {
+						sections.push(html!(<li>{"Restore all spell slots."}</li>));
 					}
-					false => {
-						let data_str = crate::data::as_feature_path_text(adjusted_path).unwrap_or_default();
-						sections.push(html!(<li>
-							{"Restore "}{&amt}{" uses of "}{&data_str}{"."}
-							{" (via "}{&source_str}{")"}
-						</li>));
+					Some(rank_amounts) => {
+						let iter = rank_amounts.iter();
+						let iter = iter.map(|(rank, amount)| match amount {
+							None => format!("all rank {rank}"),
+							Some(amount) => format!("{amount} rank {rank}"),
+						});
+						if let Some(list) = crate::utility::list_as_english(iter.collect(), "and") {
+							sections.push(html!(<li>{"Restore "}{list}{"."}</li>));
+						}
 					}
+				},
+				RestEffect::RestoreResourceUses { data_path, amount } => {
+					let amt = match amount {
+						None => "all".to_owned(),
+						Some(roll_set) => roll_set.to_string(),
+					};
+					let adjusted_path = match (data_path.ends_with("uses"), data_path.parent()) {
+						(true, Some(without_uses)) => without_uses,
+						(false, _) | (true, None) => data_path.as_ref(),
+					};
+					match &reset_entry.source == data_path {
+						true => {
+							sections.push(html!(<li>
+								{"Restore "}{&amt}{" uses of "}{&source_str}{"."}
+							</li>));
+						}
+						false => {
+							let data_str = crate::data::as_feature_path_text(adjusted_path).unwrap_or_default();
+							sections.push(html!(<li>
+								{"Restore "}{&amt}{" uses of "}{&data_str}{"."}
+								{" (via "}{&source_str}{")"}
+							</li>));
+						}
+					}
+				}
+				RestEffect::GrantCondition(Indirect::Custom(condition)) => {
+					// TODO: show expand button to inspect condition
+					sections.push(html!(<li>
+						{"Grant condition "}{&condition.name}{" (via "}{&source_str}{")."}
+					</li>));
+				}
+				RestEffect::GrantCondition(Indirect::Id(condition_id)) => {
+					sections.push(html!(<li>
+						{"[ERROR] Fail to grant condition with id "}{condition_id.to_string()}
+						{" (not found in database), (via "}{&source_str}{")."}
+					</li>));
 				}
 			}
 		}
 	}
+
 	html! {
 		<div class="mt-3">
 			<h4>{"Affected Features"}</h4>
