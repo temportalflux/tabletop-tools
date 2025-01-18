@@ -10,7 +10,6 @@ use crate::{
 				Character,
 			},
 			description,
-			roll::RollSet,
 			spell::{self, Spell},
 			Ability,
 		},
@@ -124,6 +123,7 @@ impl Mutator for Spellcasting {
 	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		match &self.0 {
 			Operation::Caster(caster) => {
+				/*
 				// The reset entry for standard spell slots is taken care of by `Persistent::SelectedSpells`
 				// (where the data paths for spell slots are found).
 				// We need to add reset entries for all bonus spell slots at the character's current level.
@@ -140,19 +140,17 @@ impl Mutator for Spellcasting {
 							// so we need to submit a separate reset for it
 							// (because restore amount is applied to all data paths in an entry).
 							let rank_data_path = stats.persistent().selected_spells.consumed_slots_path(*rank);
-							let entry = crate::system::dnd5e::data::character::RestEntry {
-								restore_amount: Some(RollSet::from(*amount as i32)),
-								data_paths: vec![rank_data_path],
-								source: parent.display.join(format!(
-									"{} Spellcasting Slots (Rank {})",
-									caster.name(),
-									*rank
-								)),
+							let entry = crate::system::dnd5e::data::character::RestEntry{
+								source: parent.display.join(format!("{} Spellcasting Slots (Rank {})", caster.name(), *rank)),
+								effect: crate::system::dnd5e::data::character::RestEffect::GrantSpellSlots(Some([
+									(*rank, Some(*amount as u32))
+								].into())),
 							};
 							stats.rest_resets_mut().add(*reset_on, entry);
 						}
 					}
 				}
+				*/
 				stats.spellcasting_mut().add_caster(caster.clone());
 			}
 			Operation::AddSource { class_name, spell_ids } => {

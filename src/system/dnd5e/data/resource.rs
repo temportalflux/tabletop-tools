@@ -84,9 +84,8 @@ impl Resource {
 		let Some(rest) = reset.get_rest(stats) else { return };
 		let restore_amount = reset.get_rate(stats);
 		stats.rest_resets_mut().add(rest, RestEntry {
-			restore_amount,
-			data_paths: vec![uses_path],
 			source: path_to_parent.display.clone(),
+			effects: vec![super::character::RestEffect::RestoreResourceUses { data_path: uses_path, amount: restore_amount }],
 		});
 	}
 

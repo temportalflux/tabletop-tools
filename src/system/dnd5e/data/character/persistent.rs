@@ -77,8 +77,8 @@ impl mutator::Group for Persistent {
 			// Add the reset data for spell slots (shared by multiple classes when multiclassing).
 			// Non-casters will still have this entry, but since they can't cast/don't have any slots,
 			// there will be no slots that show up or actual data to reset.
-			let (rest, entry) = self.selected_spells.reset_on_rest();
-			stats.rest_resets_mut().add(rest, entry);
+			//let (rest, entry) = self.selected_spells.reset_on_rest();
+			//stats.rest_resets_mut().add(rest, entry);
 		}
 
 		for bundle in &self.bundles {

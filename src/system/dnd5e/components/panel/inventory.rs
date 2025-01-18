@@ -9,7 +9,9 @@ use crate::{
 	system::{
 		self,
 		dnd5e::{
-			change::inventory::AppendItems, components::{WalletInline, WalletInlineButton}, data::{
+			change::inventory::AppendItems,
+			components::{WalletInline, WalletInlineButton},
+			data::{
 				character::{IndirectItem, Persistent, StartingEquipment},
 				currency::Wallet,
 				item::{
@@ -18,7 +20,7 @@ use crate::{
 					Item,
 				},
 				Indirect,
-			}
+			},
 		},
 		SourceId, System,
 	},

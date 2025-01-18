@@ -1,13 +1,12 @@
 use super::GeneralProp;
 use crate::{
 	components::{context_menu, stop_propagation},
-	page::characters::sheet::{CharacterHandle, MutatorImpact},
+	page::characters::sheet::{CharacterHandle},
 	system::dnd5e::{
-		components::{glyph::Glyph, validate_uint_only},
-		data::{
+		change::{ApplyRest}, components::{glyph::Glyph, validate_uint_only}, data::{
 			roll::{Die, Roll, RollSet},
 			Ability, Rest,
-		},
+		}
 	},
 	utility::InputExt,
 };
@@ -40,59 +39,48 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 	let close_modal = context_menu::use_close_fn();
 
 	let constitution_mod = state.ability_modifier(Ability::Constitution, None);
-	let commit_rest = state.new_dispatch({
+	let commit_rest = state.dispatch_change({
 		let rest = *value;
 		let hit_dice_to_consume = hit_dice_to_consume.clone();
 		let max_hp = state.max_hit_points().value();
-		let resets = value
-			.resets_to_apply()
-			.into_iter()
-			.map(|rest| state.rest_resets().get(rest).clone().into_iter())
-			.flatten()
-			.collect::<Vec<_>>();
-		move |_, persistent| {
+		let state = state.clone();
+		move |_| {
 			let mut rng = rand::thread_rng();
-			let mut changes = Vec::new();
-			match rest {
-				Rest::Long => {
-					persistent.hit_points.current = max_hp;
-					changes.push(format!("Set hit points to max ({max_hp})."));
 
-					persistent.hit_points.temp = 0;
-					changes.push(format!("Cleared temporary hit points."));
-
-					persistent.hit_points.saves = Default::default();
-					changes.push(format!("Cleared saving throws."));
-
-					let hit_die_paths = {
-						let iter = persistent.hit_points.hit_dice_selectors.iter();
-						let iter = iter.filter_map(|(_die, selector)| selector.get_data_path());
-						iter.collect::<Vec<_>>()
-					};
-					for data_path in hit_die_paths {
-						persistent.set_selected(data_path, None);
-					}
-					changes.push(format!("Restored all hit dice."));
+			let mut change = ApplyRest::from(rest);
+			for reset_entry in state.rest_resets().get(rest) {
+				let mut effects = Vec::with_capacity(reset_entry.effects.len());
+				for effect in &reset_entry.effects {
+					change.push_effect(Some(&reset_entry.source), effect, &state);
 				}
-				Rest::Short => {
-					let hp = hit_dice_to_consume.hp_to_gain(constitution_mod);
-					persistent.hit_points.current += hp;
-					changes.push(format!("Increased hit points by {hp}."));
+			}
 
-					for (data_path, amount_used) in hit_dice_to_consume.consumed_uses() {
-						let prev_value = persistent.get_first_selection_at::<u32>(data_path);
-						let prev_value = prev_value.map(Result::ok).flatten().unwrap_or(0);
-						let new_value = prev_value.saturating_add(*amount_used).to_string();
-						persistent.set_selected(data_path, Some(new_value));
+			if rest == Rest::Short {
+				change.push_effect(None, ApplyRestEffect::GrantHitDiceHP {
+					hit_dice: hit_dice_to_consume.total_rolls,
+					rolled_hp: hit_dice_to_consume.rolled_hp,
+				}, &state);
 
-						let class_name = data_path.components().next().unwrap().as_os_str();
-						let class_name = class_name.to_str().unwrap();
-						changes.push(format!("Used {amount_used} hit dice from {class_name}."));
-					}
+				/*
+				let hp = hit_dice_to_consume.hp_to_gain(constitution_mod);
+				persistent.hit_points.current += hp;
+				changes.push(format!("Increased hit points by {hp}."));
+
+				for (data_path, amount_used) in hit_dice_to_consume.consumed_uses() {
+					let prev_value = persistent.get_first_selection_at::<u32>(data_path);
+					let prev_value = prev_value.map(Result::ok).flatten().unwrap_or(0);
+					let new_value = prev_value.saturating_add(*amount_used).to_string();
+					persistent.set_selected(data_path, Some(new_value));
+
+					let class_name = data_path.components().next().unwrap().as_os_str();
+					let class_name = class_name.to_str().unwrap();
+					changes.push(format!("Used {amount_used} hit dice from {class_name}."));
 				}
-			};
+				*/
+			}
+			/*
 			for entry in &resets {
-				let uses_to_remove = match &entry.restore_amount {
+				let uses_to_remove = match entry.restore_amount {
 					None => None,
 					Some(roll) => Some(roll.roll(&mut rng)),
 				};
@@ -119,12 +107,10 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 					persistent.set_selected(data_path, new_value);
 				}
 			}
-
-			// TODO: These changes can be recorded in a commit when its time to save data.
-			log::debug!("{changes:?}");
+			*/
 
 			close_modal.emit(());
-			MutatorImpact::None
+			Some(change)
 		}
 	});
 
@@ -407,17 +393,17 @@ fn ProjectedRestorations(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 	}
 	for rest in value.resets_to_apply() {
 		for entry in state.rest_resets().get(rest) {
-			let amt = match &entry.restore_amount {
+			let amt = match entry.restore_amount() {
 				None => "all".to_owned(),
 				Some(roll_set) => roll_set.to_string(),
 			};
-			let source_str = crate::data::as_feature_path_text(&entry.source).unwrap_or_default();
-			for data_path in &entry.data_paths {
+			let source_str = crate::data::as_feature_path_text(entry.source()).unwrap_or_default();
+			for data_path in entry.data_paths() {
 				let adjusted_path = match (data_path.ends_with("uses"), data_path.parent()) {
 					(true, Some(without_uses)) => without_uses,
 					(false, _) | (true, None) => data_path.as_ref(),
 				};
-				match &entry.source == data_path {
+				match entry.source() == data_path {
 					true => {
 						sections.push(html!(<li>
 							{"Restore "}{&amt}{" uses of "}{&source_str}{"."}

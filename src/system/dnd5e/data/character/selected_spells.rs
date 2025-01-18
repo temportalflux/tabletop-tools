@@ -1,4 +1,4 @@
-use super::{RestEntry, MAX_SPELL_RANK};
+use super::RestEntry;
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
@@ -134,11 +134,10 @@ impl SelectedSpells {
 	}
 
 	pub fn reset_on_rest(&self) -> (Rest, RestEntry) {
-		let data_paths =
-			(1..=MAX_SPELL_RANK).into_iter().map(|rank| self.consumed_slots_path(rank)).collect::<Vec<_>>();
-		let entry =
-			RestEntry { restore_amount: None, data_paths, source: PathBuf::from("Standard Spellcasting Slots") };
-		(Rest::Long, entry)
+		(Rest::Long, RestEntry {
+			effects: vec![super::RestEffect::GrantSpellSlots(None)],
+			source: PathBuf::from("Standard Spellcasting Slots"),
+		})
 	}
 }
 

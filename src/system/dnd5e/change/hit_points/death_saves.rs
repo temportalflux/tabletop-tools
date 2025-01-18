@@ -11,6 +11,7 @@ use kdlize::{AsKdl, FromKdl, NodeBuilder};
 pub struct DeathSaves {
 	pub save: DeathSave,
 	pub delta: i8,
+	pub value: u8,
 }
 
 crate::impl_trait_eq!(DeathSaves);
@@ -21,7 +22,7 @@ impl Change for DeathSaves {
 
 	fn apply_to(&self, character: &mut Self::Target) {
 		let save_count = &mut character.persistent_mut().hit_points_mut().saves[self.save];
-		*save_count = save_count.saturating_add_signed(self.delta);
+		*save_count = self.value;
 	}
 }
 
@@ -30,7 +31,8 @@ impl FromKdl<NodeContext> for DeathSaves {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let save = node.next_str_req_t()?;
 		let delta = node.next_i64_req()? as i8;
-		Ok(Self { save, delta })
+		let value = node.next_i64_req()? as u8;
+		Ok(Self { save, delta, value })
 	}
 }
 
@@ -39,6 +41,7 @@ impl AsKdl for DeathSaves {
 		let mut node = NodeBuilder::default();
 		node.entry(self.save.as_str());
 		node.entry(self.delta as i64);
+		node.entry(self.value as i64);
 		node
 	}
 }
