@@ -261,7 +261,6 @@ impl CharacterHandle {
 					log::warn!("Encountered error updating cached character objects: {err:?}");
 				}
 				character.spellcasting_mut().insert_cached_spells(cached_spells);
-				character.persistent_mut().mark_structurally_changed();
 			}
 
 			let mutations = {

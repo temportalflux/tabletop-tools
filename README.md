@@ -37,6 +37,12 @@ We've gotten to a point of digitial feudalism where I'm just really tired of pro
 
 I also acknowledge the need and desire for my content to be synced across devices though, and doing that without some shared backend is nigh impossible. So Integro walks the gap, both storing the app's data on the local device, and syncing each user's homebrew, character, and app settings to their own self-owned github repository(s). One day perhaps this app will support multiple storage backends.
 
+### Characters can be used as-is
+
+I should be able to use all of the features, items, conditions, and spells that are applied to my character without having any modules installed. If I want to add or change the features, items, conditions, and spells on my character, thats when I need to have modules installed.
+
+NOTE: This is more a technical goal than actually feasible/important. It makes fetching objects from the database less frequent, at the cost of characters taking slightly longer to load.
+
 ### Multi-System
 
 There continues to be numerous interesting game systems out there to try, and I'd like to play them all in a multi-device webapp where I have full control over my own data. So the infastructure for Integro has been built with keen intent towards supporting multiple game systems. Transcribing those game systems into content though is time-consuming, so it only supports D&D5e (2014, and slowly 2024) at the moment.

@@ -92,6 +92,7 @@ impl Character {
 	fn initiaize_recompile(&mut self) {
 		self.character.set_data_path(&ReferencePath::new());
 		self.clear_derived();
+		self.character.has_structurally_changed = false;
 	}
 
 	fn insert_mutators(&mut self) {
@@ -138,8 +139,7 @@ impl Character {
 
 		self.apply_cached_mutators();
 
-		self.inventory_mut().resolve_indirection(&provider).await?;
-		self.persistent_mut().conditions.resolve_indirection(&provider).await?;
+		self.resolve_objects(&provider).await?;
 		self.derived.spellcasting.initialize_ritual_cache(&self.character);
 
 		Ok(())
@@ -261,6 +261,29 @@ impl Character {
 
 	pub fn export_as_kdl(&self) -> kdl::KdlDocument {
 		self.persistent().export_as_kdl()
+	}
+
+	pub async fn resolve_objects(&mut self, provider: &super::ObjectCacheProvider) -> anyhow::Result<()> {
+		// TODO: Indirection resolution must read from and update the object cache!
+		self.inventory_mut().resolve_indirection(&provider).await?;
+		self.persistent_mut().conditions.resolve_indirection(&provider).await?;
+		for (_rest, entries) in &mut self.derived.rest_resets {
+			for entry in entries {
+				for effect in &mut entry.effects {
+					use crate::system::dnd5e::data::{Condition, Indirect};
+					match effect {
+						super::RestEffect::GrantCondition(Indirect::Id(condition_id)) => {
+							let condition = provider.get_typed_entry::<Condition>(condition_id.clone(), None).await?;
+							let Some(mut condition) = condition else { continue };
+							condition.resolve_indirection(provider).await?;
+							*effect = super::RestEffect::GrantCondition(Indirect::Custom(condition));
+						}
+						_ => {}
+					}
+				}
+			}
+		}
+		Ok(())
 	}
 }
 

@@ -1,11 +1,12 @@
 ---
 created: 2024-12-31T21:04:06.632Z
-updated: 2025-01-17T13:32:11.389Z
+updated: 2025-01-18T00:07:28.212Z
 assigned: ""
 progress: 0
 tags:
   - Content
   - v1
+started: 2025-01-18T00:07:28.212Z
 ---
 
 # ApplyWhenRest ("rest") mutator can grant conditions

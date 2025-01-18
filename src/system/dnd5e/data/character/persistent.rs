@@ -73,13 +73,6 @@ impl mutator::Group for Persistent {
 			stats.ability_scores_mut().push_bonus(ability, (*score).into(), "Base Score".into());
 		}
 		stats.apply(&super::FinalizeAbilityScores.into(), parent);
-		{
-			// Add the reset data for spell slots (shared by multiple classes when multiclassing).
-			// Non-casters will still have this entry, but since they can't cast/don't have any slots,
-			// there will be no slots that show up or actual data to reset.
-			let (rest, entry) = self.selected_spells.reset_on_rest();
-			stats.rest_resets_mut().add(rest, entry);
-		}
 
 		for bundle in &self.bundles {
 			stats.apply_from(bundle, parent);
@@ -141,6 +134,13 @@ impl Persistent {
 		&mut self.hit_points
 	}
 
+	pub fn export_as_kdl(&self) -> kdl::KdlDocument {
+		let mut doc = kdl::KdlDocument::new();
+		doc.nodes_mut().push(self.as_kdl().build("character"));
+		doc
+	}
+}
+impl Persistent {
 	pub fn get_selections_at(&self, path: impl AsRef<Path>) -> Option<&Vec<String>> {
 		self.selected_values.get(path.as_ref())
 	}
@@ -189,12 +189,6 @@ impl Persistent {
 		};
 		let target: String = value.into();
 		values.retain(|value| *value != target);
-	}
-
-	pub fn export_as_kdl(&self) -> kdl::KdlDocument {
-		let mut doc = kdl::KdlDocument::new();
-		doc.nodes_mut().push(self.as_kdl().build("character"));
-		doc
 	}
 }
 

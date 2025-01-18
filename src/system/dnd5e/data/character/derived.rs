@@ -1,16 +1,19 @@
 use super::PersonalityKind;
-use crate::system::{
-	dnd5e::{
-		data::{
-			action::AttackQuery,
-			roll::{Modifier, Roll, RollSet},
-			Ability, ArmorClass, DamageType, OtherProficiencies, Rest, Spell,
+use crate::{
+	system::{
+		dnd5e::{
+			data::{
+				action::AttackQuery,
+				roll::{Modifier, Roll, RollSet},
+				Ability, ArmorClass, Condition, DamageType, Indirect, OtherProficiencies, Rest, Spell,
+			},
+			mutator::{Defense, Flag},
 		},
-		mutator::{Defense, Flag},
+		mutator::ReferencePath,
 	},
-	mutator::ReferencePath,
+	utility::NotInList,
 };
-use enum_map::{enum_map, EnumMap};
+use enum_map::{enum_map, EnumMap, IterMut};
 use std::{
 	collections::{BTreeMap, HashSet},
 	path::{Path, PathBuf},
@@ -342,10 +345,10 @@ impl AttackBonuses {
 pub struct RestResets {
 	entries: EnumMap<Rest, Vec<RestEntry>>,
 }
+
 #[derive(Clone, PartialEq, Debug)]
 pub struct RestEntry {
-	pub restore_amount: Option<RollSet>,
-	pub data_paths: Vec<PathBuf>,
+	pub effects: Vec<RestEffect>,
 	pub source: PathBuf,
 }
 impl RestResets {
@@ -355,5 +358,85 @@ impl RestResets {
 
 	pub fn get(&self, rest: Rest) -> &Vec<RestEntry> {
 		&self.entries[rest]
+	}
+
+	pub fn iter_mut(&mut self) -> impl Iterator<Item = (Rest, &mut Vec<RestEntry>)> + '_ {
+		self.into_iter()
+	}
+}
+impl<'a> IntoIterator for &'a mut RestResets {
+	type Item = (Rest, &'a mut Vec<RestEntry>);
+	type IntoIter = IterMut<'a, Rest, Vec<RestEntry>>;
+
+	fn into_iter(self) -> Self::IntoIter {
+		self.entries.iter_mut()
+	}
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum RestEffect {
+	// None => All to max
+	// [#: None] => rank to max
+	// [#: #] => add an amount of slots for that rank
+	GrantSpellSlots(Option<BTreeMap<u8, Option<u32>>>),
+	RestoreResourceUses { data_path: PathBuf, amount: Option<RollSet> },
+	GrantCondition(Indirect<Condition>),
+}
+impl kdlize::FromKdl<crate::kdl_ext::NodeContext> for RestEffect {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
+			"GrantSpellSlots" => {
+				let mut rank_amounts = BTreeMap::default();
+				for mut node in node.query_all("scope() > rank")? {
+					let rank = node.next_i64_req()? as u8;
+					let amount: Option<u32> = node.next_i64_opt()?.map(|v| v as u32);
+					rank_amounts.insert(rank, amount);
+				}
+				Ok(Self::GrantSpellSlots((!rank_amounts.is_empty()).then_some(rank_amounts)))
+			}
+			"RestoreResourceUses" => {
+				let data_path = node.next_str_req_t()?;
+				let amount = node.next_str_opt_t()?;
+				Ok(Self::RestoreResourceUses { data_path, amount })
+			}
+			"GrantCondition" => Ok(Self::GrantCondition(Indirect::from_kdl(node)?)),
+			id => {
+				Err(NotInList(id.to_owned(), vec!["GrantSpellSlots", "RestoreResourceUses", "GrantCondition"]).into())
+			}
+		}
+	}
+}
+impl kdlize::AsKdl for RestEffect {
+	fn as_kdl(&self) -> kdlize::NodeBuilder {
+		let mut node = kdlize::NodeBuilder::default();
+		match self {
+			Self::GrantSpellSlots(rank_amounts) => {
+				node.entry("GrantSpellSlots");
+				match rank_amounts {
+					None => {}
+					Some(rank_amounts) => {
+						for (rank, amount) in rank_amounts {
+							node.child(("rank", {
+								let mut node = kdlize::NodeBuilder::default();
+								node.entry(*rank as i64);
+								node.entry(amount.as_ref().map(|v| *v as i64));
+								node
+							}));
+						}
+					}
+				}
+			}
+			Self::RestoreResourceUses { data_path, amount } => {
+				node.entry("RestoreResourceUses");
+				node.entry(data_path.to_str().unwrap());
+				node.entry(amount.as_ref().map(RollSet::to_string));
+			}
+			Self::GrantCondition(condition) => {
+				node.entry("GrantCondition");
+				node += condition.as_kdl();
+			}
+		}
+		node
 	}
 }

@@ -49,7 +49,6 @@ columnSorting:
 - [mutator-to-disable-action-budget](tasks/mutator-to-disable-action-budget.md)
 - [spellcasting-limited-by-both-slot-and-uses-at-the-same-time](tasks/spellcasting-limited-by-both-slot-and-uses-at-the-same-time.md)
 - [display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel](tasks/display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel.md)
-- [apply-when-rest-rest-mutator-can-grant-conditions](tasks/apply-when-rest-rest-mutator-can-grant-conditions.md)
 - [embed-item-and-condition-indirection-in-characters](tasks/embed-item-and-condition-indirection-in-characters.md)
 - [upgrade-kdl-to-6-x](tasks/upgrade-kdl-to-6-x.md)
 - [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
@@ -58,6 +57,7 @@ columnSorting:
 ## In Progress
 
 - [character-changelog](tasks/character-changelog.md)
+- [apply-when-rest-rest-mutator-can-grant-conditions](tasks/apply-when-rest-rest-mutator-can-grant-conditions.md)
 
 ## Done
 

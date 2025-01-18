@@ -153,25 +153,36 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 			Some(value)
 		}
 	});
+	let dispatch_change_hp = state.dispatch_change({
+		let state = state.clone();
+		move |delta: Option<i32>| {
+			use crate::system::dnd5e::change::*;
+			let delta = delta?;
+			let max_hp = state.get_hp(HitPoint::Max);
+			let hit_points = state.hit_points().clone().plus_hp(delta, max_hp);
+			Some(hit_points::HealOrDamage {
+				delta,
+				current: hit_points.current,
+				temp: hit_points.temp,
+				clear_saves: hit_points.saves == enum_map::EnumMap::default(),
+			})
+		}
+	});
+	let onclick_heal = dispatch_change_hp.reform({
+		let take_hp_input = take_hp_input.clone();
+		move |evt: MouseEvent| {
+			evt.stop_propagation();
+			take_hp_input.emit(()).map(|v| v as i32)
+		}
+	});
+	let onclick_dmg = dispatch_change_hp.reform({
+		let take_hp_input = take_hp_input.clone();
+		move |evt: MouseEvent| {
+			evt.stop_propagation();
+			take_hp_input.emit(()).map(|v| -1 * (v as i32))
+		}
+	});
 	let max_hp = state.get_hp(HitPoint::Max);
-	let onclick_heal = state.dispatch_change({
-		let take_hp_input = take_hp_input.clone();
-		move |evt: MouseEvent| {
-			use crate::system::dnd5e::change::*;
-			evt.stop_propagation();
-			let Some(amt) = take_hp_input.emit(()) else { return None };
-			Some(hit_points::HealOrDamage(amt as i32))
-		}
-	});
-	let onclick_dmg = state.dispatch_change({
-		let take_hp_input = take_hp_input.clone();
-		move |evt: MouseEvent| {
-			use crate::system::dnd5e::change::*;
-			evt.stop_propagation();
-			let Some(amt) = take_hp_input.emit(()) else { return None };
-			Some(hit_points::HealOrDamage(-1 * (amt as i32)))
-		}
-	});
 
 	html! {
 		<div class="d-flex details hit-points">
@@ -380,13 +391,22 @@ fn ModalSectionApplyChangeForm() -> Html {
 		}
 	});
 	let apply_delta = state.dispatch_change({
-		let delta = delta.clone();
+		let delta_state = delta.clone();
+		let state = state.clone();
 		move |evt: MouseEvent| {
 			use crate::system::dnd5e::change::*;
 			evt.stop_propagation();
-			let amt = *delta;
-			delta.set(0);
-			Some(hit_points::HealOrDamage(amt))
+
+			let delta = *delta_state;
+			delta_state.set(0);
+			let max_hp = state.get_hp(HitPoint::Max);
+			let hit_points = state.hit_points().clone().plus_hp(delta, max_hp);
+			Some(hit_points::HealOrDamage {
+				delta,
+				current: hit_points.current,
+				temp: hit_points.temp,
+				clear_saves: hit_points.saves == enum_map::EnumMap::default(),
+			})
 		}
 	});
 	let clear_delta = Callback::from({
@@ -720,16 +740,16 @@ fn DeathSaveBoxes(DeathSaveBoxesProps { save }: &DeathSaveBoxesProps) -> Html {
 
 	let onchange = state.dispatch_change({
 		let save = *save;
+		let state = state.clone();
 		move |evt: web_sys::Event| {
 			use crate::system::dnd5e::change::hit_points;
 			let Some(checked) = evt.input_checked() else { return None };
-			Some(hit_points::DeathSaves {
-				save,
-				delta: match checked {
-					true => 1,
-					false => -1,
-				},
-			})
+			let delta = match checked {
+				true => 1,
+				false => -1,
+			};
+			let value = state.hit_points().saves[save].saturating_add_signed(delta);
+			Some(hit_points::DeathSaves { save, delta, value })
 		}
 	});
 

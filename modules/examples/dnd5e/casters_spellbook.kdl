@@ -2,10 +2,10 @@
 item name="Karnac's Spellbook" weight=3.0 {
 	kind "Simple"
 	spells transcribe=true {
-		spell "github://flux-tabletop:dnd5e-basic-rules@dnd5e/spells/arcaneLock.kdl"
-		spell "github://flux-tabletop:dnd5e-basic-rules@dnd5e/spells/glyphOfWarding.kdl"
-		spell "github://flux-tabletop:dnd5e-basic-rules@dnd5e/spells/identify.kdl"
-		spell "github://flux-tabletop:dnd5e-basic-rules@dnd5e/spells/falseLife.kdl"
-		spell "github://flux-tabletop:dnd5e-basic-rules@dnd5e/spells/teleport.kdl"
+		spell "github://flux-tabletop:dnd5e-basic-rules-2014@dnd5e/spells/arcaneLock.kdl"
+		spell "github://flux-tabletop:dnd5e-basic-rules-2014@dnd5e/spells/glyphOfWarding.kdl"
+		spell "github://flux-tabletop:dnd5e-basic-rules-2014@dnd5e/spells/identify.kdl"
+		spell "github://flux-tabletop:dnd5e-basic-rules-2014@dnd5e/spells/falseLife.kdl"
+		spell "github://flux-tabletop:dnd5e-basic-rules-2014@dnd5e/spells/teleport.kdl"
 	}
 }

@@ -50,11 +50,4 @@ impl Rest {
 			Self::Long => DESC_LONG,
 		}
 	}
-
-	pub fn resets_to_apply(&self) -> Vec<Self> {
-		match self {
-			Rest::Short => vec![Rest::Short],
-			Rest::Long => vec![Rest::Long, Rest::Short],
-		}
-	}
 }

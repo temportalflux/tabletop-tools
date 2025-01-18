@@ -49,6 +49,10 @@ impl<T> PathMap<T> {
 		&mut self.get_mut_or_insert_at(key.as_ref()).values
 	}
 
+	pub fn push(&mut self, value: T) {
+		self.values.push(value);
+	}
+
 	pub fn insert(&mut self, key: impl AsRef<Path>, value: T) {
 		self.values(key).push(value);
 	}

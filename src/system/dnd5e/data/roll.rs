@@ -58,21 +58,29 @@ impl Roll {
 
 impl std::fmt::Display for Roll {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self.die {
-			None => write!(f, "{}", self.amount),
-			Some(die) => write!(f, "{}d{}", self.amount, die.value()),
-		}
+		Self::fmt_die_amount(f, self.die, self.amount)
 	}
 }
 
-impl FromStr for Roll {
-	type Err = ParseRollError;
+impl Roll {
+	pub fn fmt_die_amount<Integer: std::fmt::Display>(
+		f: &mut std::fmt::Formatter<'_>, die: Option<Die>, amount: Integer,
+	) -> std::fmt::Result {
+		match die {
+			None => write!(f, "{}", amount),
+			Some(die) => write!(f, "{}d{}", amount, die.value()),
+		}
+	}
 
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
+	pub fn parse_die_amount<Integer>(s: &str) -> Result<(Option<Die>, Integer), ParseRollError>
+	where
+		Integer: std::str::FromStr,
+		ParseRollError: From<Integer::Err>,
+	{
 		static EXPECTED: &'static str = "{int}d{int}";
 		if !s.contains('d') {
-			let amount = s.parse::<i32>()?;
-			return Ok(Self::from(amount));
+			let amount = s.parse::<Integer>()?;
+			return Ok((None, amount));
 		}
 		let mut parts = s.split('d');
 		let amount_str = parts
@@ -84,9 +92,18 @@ impl FromStr for Roll {
 		if parts.next().is_some() {
 			return Err(GeneralError(format!("Too many parts in {s:?} for Roll, expected {EXPECTED:?}")).into());
 		}
-		let amount = amount_str.parse::<i32>()?;
+		let amount = amount_str.parse::<Integer>()?;
 		let die = Die::try_from(die_str.parse::<u32>()?)?;
-		Ok(Self { amount, die: Some(die) })
+		Ok((Some(die), amount))
+	}
+}
+
+impl FromStr for Roll {
+	type Err = ParseRollError;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		let (die, amount) = Self::parse_die_amount(s)?;
+		Ok(Self { amount, die })
 	}
 }
 

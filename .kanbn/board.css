@@ -11,10 +11,12 @@ body {
 	--color-performance: rgb(168, 45, 14);
 	--color-bug: rgb(182, 36, 36);
 	--color-capability: rgb(192, 68, 114);
-	--color-mutator: rgb(191, 83, 215);
+	--color-mutator: rgb(220, 62, 255);
 	--color-architecture: rgb(48, 211, 121);
 	--color-persistence: rgb(221, 187, 36);
 	--color-search: rgb(118, 188, 39);
+	--color-mvp: rgb(182, 123, 253);
+	--color-v1: rgb(182, 123, 253);
 }
 
 .kanbn-task-data-created,.kanbn-task-data-updated,.kanbn-task-data-completed,.kanbn-task-progress,.kanbn-task-data-workload {
@@ -41,7 +43,11 @@ body {
 }
 
 .kanbn-task-tag-mvp {
-	background-color: rgb(144, 92, 255)
+	background-color: var(--color-mvp);
+}
+
+.kanbn-task-tag-v1 {
+	background-color: var(--color-v1);
 }
 
 .kanbn-task-tag-bug {

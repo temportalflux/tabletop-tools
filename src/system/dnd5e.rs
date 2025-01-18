@@ -93,6 +93,7 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_change::<ApplyLimitedUses>();
 	registry.register_change::<ApplyItemUserTag>();
 	registry.register_change::<ApplyNotes>();
+	registry.register_change::<ApplyRest>();
 	registry.register_change::<ChangeItemAmount>();
 	registry.register_change::<ConsumeItemSpell>();
 	registry.register_change::<ConsumeSpellSlot>();

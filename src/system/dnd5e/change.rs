@@ -26,6 +26,9 @@ pub use limited_uses::*;
 mod notes;
 pub use notes::*;
 
+mod rest;
+pub use rest::*;
+
 mod spell_consume_slot;
 pub use spell_consume_slot::*;
 
