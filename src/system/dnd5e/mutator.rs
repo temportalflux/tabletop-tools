@@ -13,6 +13,9 @@ pub use apply_if::*;
 mod armor_class;
 pub use armor_class::*;
 
+mod condition;
+pub use condition::*;
+
 mod description;
 pub use description::*;
 

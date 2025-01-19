@@ -24,11 +24,13 @@ use yew::prelude::*;
 
 fn insert_condition_tag(out: &mut Vec<String>, condition: &Condition) {
 	out.push(condition.name.clone());
+	/*
 	for implied in &condition.implied {
 		if let Indirect::Custom(condition) = &implied {
 			insert_condition_tag(out, condition);
 		}
 	}
+	*/
 }
 
 #[function_component]
@@ -185,6 +187,7 @@ fn ConditionBody(GeneralProp { value: condition }: &GeneralProp<Rc<Condition>>) 
 		}
 	});
 
+	/*
 	let mut implications = Vec::with_capacity(condition.implied.len());
 	for implied in &condition.implied {
 		implications.push(html!(<IndirectFetch<Condition>
@@ -205,15 +208,16 @@ fn ConditionBody(GeneralProp { value: condition }: &GeneralProp<Rc<Condition>>) 
 			})}
 		/>));
 	}
+	{(!implications.is_empty()).then(|| html! {
+		<div class="d-flex flex-row">
+			<span class="me-2">{"Implied Conditions:"}</span>
+			<div>{implications}</div>
+		</div>
+	})};
+	*/
 
 	html! {<>
 		<div class="text-block">{condition.description.clone()}</div>
-		{(!implications.is_empty()).then(|| html! {
-			<div class="d-flex flex-row">
-				<span class="me-2">{"Implied Conditions:"}</span>
-				<div>{implications}</div>
-			</div>
-		})}
 		{mutator_list(&condition.mutators, Some(&state))}
 	</>}
 }

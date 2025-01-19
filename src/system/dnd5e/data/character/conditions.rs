@@ -19,13 +19,6 @@ pub struct Conditions {
 }
 
 impl Conditions {
-	pub async fn resolve_indirection(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
-		for condition in self.iter_mut() {
-			condition.resolve_indirection(provider).await?;
-		}
-		Ok(())
-	}
-
 	pub fn insert(&mut self, condition: Condition) {
 		match &condition.id {
 			Some(id) => {

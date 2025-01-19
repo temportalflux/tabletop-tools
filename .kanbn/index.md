@@ -27,7 +27,6 @@ columnSorting:
 - [parcels-mailbox](tasks/parcels-mailbox.md)
 - [convert-weapon-attack-to-explicit-structure](tasks/convert-weapon-attack-to-explicit-structure.md)
 - [condition-supression](tasks/condition-supression.md)
-- [expanded-object-cache](tasks/expanded-object-cache.md)
 - [concentration-tracker](tasks/concentration-tracker.md)
 - [eldritch-invocation-book-of-ancient-secrets](tasks/eldritch-invocation-book-of-ancient-secrets.md)
 - [details-drawer-layouts-evaluations](tasks/details-drawer-layouts-evaluations.md)
@@ -49,7 +48,6 @@ columnSorting:
 - [mutator-to-disable-action-budget](tasks/mutator-to-disable-action-budget.md)
 - [spellcasting-limited-by-both-slot-and-uses-at-the-same-time](tasks/spellcasting-limited-by-both-slot-and-uses-at-the-same-time.md)
 - [display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel](tasks/display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel.md)
-- [embed-item-and-condition-indirection-in-characters](tasks/embed-item-and-condition-indirection-in-characters.md)
 - [upgrade-kdl-to-6-x](tasks/upgrade-kdl-to-6-x.md)
 - [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
 - [wizard-spell-mastery](tasks/wizard-spell-mastery.md)
@@ -58,6 +56,8 @@ columnSorting:
 
 - [character-changelog](tasks/character-changelog.md)
 - [apply-when-rest-rest-mutator-can-grant-conditions](tasks/apply-when-rest-rest-mutator-can-grant-conditions.md)
+- [embed-item-and-condition-indirection-in-characters](tasks/embed-item-and-condition-indirection-in-characters.md)
+- [expanded-object-cache](tasks/expanded-object-cache.md)
 
 ## Done
 

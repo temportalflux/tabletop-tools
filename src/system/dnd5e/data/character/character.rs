@@ -8,9 +8,7 @@ use crate::{
 					Derived, DerivedDescription, Features, HitDice, HitPoints, Initiative, MaxHitPoints,
 					ObjectCacheProvider, Persistent, ResourceDepot, RestResets, SavingThrows, SelectedSpells, Skills,
 					Spellcasting, StartingEquipment, Stat, UserTags,
-				},
-				item::container::Inventory,
-				proficiency, Ability, ArmorClass, Feature, HitPoint, OtherProficiencies,
+				}, item::container::Inventory, proficiency, Ability, ArmorClass, Condition, Feature, HitPoint, OtherProficiencies
 			},
 			mutator::Flag,
 			BoxedCriteria, BoxedMutator,
@@ -266,7 +264,7 @@ impl Character {
 	pub async fn resolve_objects(&mut self, provider: &super::ObjectCacheProvider) -> anyhow::Result<()> {
 		// TODO: Indirection resolution must read from and update the object cache!
 		self.inventory_mut().resolve_indirection(&provider).await?;
-		self.persistent_mut().conditions.resolve_indirection(&provider).await?;
+		//self.persistent_mut().conditions.resolve_indirection(&provider).await?;
 		for (_rest, entries) in &mut self.derived.rest_resets {
 			for entry in entries {
 				for effect in &mut entry.effects {
@@ -275,7 +273,7 @@ impl Character {
 						super::RestEffect::GrantCondition(Indirect::Id(condition_id)) => {
 							let condition = provider.get_typed_entry::<Condition>(condition_id.clone(), None).await?;
 							let Some(mut condition) = condition else { continue };
-							condition.resolve_indirection(provider).await?;
+							//condition.resolve_indirection(provider).await?;
 							*effect = super::RestEffect::GrantCondition(Indirect::Custom(condition));
 						}
 						_ => {}
@@ -536,6 +534,14 @@ impl Character {
 
 	pub fn hit_dice_mut(&mut self) -> &mut HitDice {
 		&mut self.derived.hit_dice
+	}
+
+	pub fn derived_conditions(&self) -> &Vec<(Condition, PathBuf)> {
+		&self.derived.conditions
+	}
+
+	pub fn derived_conditions_mut(&mut self) -> &mut Vec<(Condition, PathBuf)> {
+		&mut self.derived.conditions
 	}
 
 	pub fn user_tags(&self) -> &UserTags {

@@ -10,8 +10,7 @@ use crate::{
 			mutator::{Defense, Flag},
 		},
 		mutator::ReferencePath,
-	},
-	utility::NotInList,
+	}, utility::NotInList
 };
 use enum_map::{enum_map, EnumMap, IterMut};
 use std::{
@@ -73,6 +72,7 @@ pub struct Derived {
 	pub rest_resets: RestResets,
 	pub resource_depot: ResourceDepot,
 	pub attunement_count: u32,
+	pub conditions: Vec<(Condition, PathBuf)>,
 	pub user_tags: UserTags,
 }
 
@@ -102,6 +102,7 @@ impl Default for Derived {
 			rest_resets: Default::default(),
 			resource_depot: Default::default(),
 			attunement_count: 0,
+			conditions: Default::default(),
 			user_tags: Default::default(),
 		}
 	}
