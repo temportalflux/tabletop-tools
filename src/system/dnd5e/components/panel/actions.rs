@@ -586,7 +586,7 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 				let iter_conditions = action.conditions_to_apply.iter();
 				let iter_conditions = iter_conditions.filter_map(|indirect| match indirect {
 					IndirectCondition::Id(id) => Some(id.clone()),
-					IndirectCondition::Custom(_custom) => None,
+					IndirectCondition::Object(_custom) => None,
 				});
 				iter_conditions.collect::<Vec<_>>()
 			});
@@ -600,7 +600,7 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 					};
 					let iter = action.conditions_to_apply.iter();
 					let iter = iter.filter_map(|indirect| match indirect {
-						IndirectCondition::Custom(condition) => Some(condition.clone()),
+						IndirectCondition::Object(condition) => Some(condition.clone()),
 						IndirectCondition::Id(id) => fetched_conditions.map(|list| list.get(id)).flatten().cloned(),
 					});
 					let conditions = iter.collect::<Vec<_>>();
@@ -904,7 +904,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				let iter_conditions = action.conditions_to_apply.iter();
 				let iter_conditions = iter_conditions.filter_map(|indirect| match indirect {
 					IndirectCondition::Id(id) => Some(id.clone()),
-					IndirectCondition::Custom(_custom) => None,
+					IndirectCondition::Object(_custom) => None,
 				});
 				iter_conditions.collect::<Vec<_>>()
 			});
@@ -918,7 +918,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 					};
 					let iter = action.conditions_to_apply.iter();
 					let iter = iter.filter_map(|indirect| match indirect {
-						IndirectCondition::Custom(custom) => Some(custom),
+						IndirectCondition::Object(custom) => Some(custom),
 						IndirectCondition::Id(id) => fetched_conditions.map(|listings| listings.get(id)).flatten(),
 					});
 					let condition_nodes = iter.map(|condition| {

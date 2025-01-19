@@ -274,7 +274,7 @@ impl Character {
 							let condition = provider.get_typed_entry::<Condition>(condition_id.clone(), None).await?;
 							let Some(mut condition) = condition else { continue };
 							//condition.resolve_indirection(provider).await?;
-							*effect = super::RestEffect::GrantCondition(Indirect::Custom(condition));
+							*effect = super::RestEffect::GrantCondition(Indirect::Object(condition));
 						}
 						_ => {}
 					}

@@ -273,7 +273,7 @@ impl<T: AsItem> ItemContainer<T> {
 							log::error!(target: "inventory", "failed to find spell {:?}", spell_id.to_string());
 							continue;
 						};
-						entry.spell = Indirect::Custom(spell);
+						entry.spell = Indirect::Object(spell);
 					}
 				}
 			}

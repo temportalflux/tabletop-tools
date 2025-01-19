@@ -1457,7 +1457,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 					}
 					SpellSource::Items => {
 						for contained_spell in &contained_spells {
-							let Indirect::Custom(spell) = &contained_spell.spell else {
+							let Indirect::Object(spell) = &contained_spell.spell else {
 								continue;
 							};
 							insert_spell(spell.clone());

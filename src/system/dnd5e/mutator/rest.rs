@@ -45,7 +45,7 @@ impl Mutator for ApplyWhenRest {
 				RestMutatorEffect::RestoreResourceUses { resource, .. } => {
 					resource.set_path(parent);
 				}
-				RestMutatorEffect::GrantCondition(Indirect::Custom(condition)) => {
+				RestMutatorEffect::GrantCondition(Indirect::Object(condition)) => {
 					condition.set_data_path(parent);
 				}
 				_ => {}

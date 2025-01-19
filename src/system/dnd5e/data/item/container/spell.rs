@@ -72,7 +72,7 @@ impl ContainerSpell {
 	pub fn spell_id(&self) -> &SourceId {
 		match &self.spell {
 			Indirect::Id(id) => id,
-			Indirect::Custom(spell) => &spell.id,
+			Indirect::Object(spell) => &spell.id,
 		}
 	}
 }
@@ -83,7 +83,7 @@ impl SpellContainer {
 		self.spells.retain_mut(|contained| {
 			let contained_id = match &contained.spell {
 				Indirect::Id(id) => id,
-				Indirect::Custom(spell) => &spell.id,
+				Indirect::Object(spell) => &spell.id,
 			}
 			.unversioned();
 			match contained_id == *spell_id {
@@ -142,7 +142,7 @@ impl SpellContainer {
 				Indirect::Id(id) => {
 					stats.spellcasting_mut().add_prepared(&id, entry);
 				}
-				Indirect::Custom(spell) => {
+				Indirect::Object(spell) => {
 					stats.spellcasting_mut().add_prepared_spell(spell, entry);
 				}
 			}

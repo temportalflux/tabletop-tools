@@ -26,7 +26,7 @@ fn insert_condition_tag(out: &mut Vec<String>, condition: &Condition) {
 	out.push(condition.name.clone());
 	/*
 	for implied in &condition.implied {
-		if let Indirect::Custom(condition) = &implied {
+		if let Indirect::Object(condition) = &implied {
 			insert_condition_tag(out, condition);
 		}
 	}

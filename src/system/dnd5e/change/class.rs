@@ -22,7 +22,7 @@ kdlize::impl_kdl_node!(ApplyClass, "class");
 
 impl ApplyClass {
 	pub fn add(class: Class) -> Self {
-		Self::Add(Indirect::Custom(class))
+		Self::Add(Indirect::Object(class))
 	}
 
 	pub fn remove(class_id: SourceId) -> Self {
@@ -39,7 +39,7 @@ impl Change for ApplyClass {
 
 	fn apply_to(&self, character: &mut Self::Target) {
 		match self {
-			Self::Add(Indirect::Custom(class)) => {
+			Self::Add(Indirect::Object(class)) => {
 				let mut class = class.clone();
 				class.current_level = 1;
 				character.persistent_mut().add_class(class);
@@ -101,7 +101,7 @@ impl AsKdl for ApplyClass {
 				node.entry("add");
 				node.entry(class_id.to_string());
 			}
-			Self::Add(Indirect::Custom(class)) => {
+			Self::Add(Indirect::Object(class)) => {
 				node.entry("add");
 				node.entry(class.id.to_string());
 			}

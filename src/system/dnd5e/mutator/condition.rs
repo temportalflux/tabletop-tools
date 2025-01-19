@@ -11,14 +11,14 @@ impl Mutator for GrantCondition {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &ReferencePath) {
-		if let Indirect::Custom(condition) = &self.0 {
+		if let Indirect::Object(condition) = &self.0 {
 			condition.set_data_path(parent);
 		}
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		// TODO: This will need to be resolved when its added to the character
-		let Indirect::Custom(condition) = &self.0 else { return };
+		let Indirect::Object(condition) = &self.0 else { return };
 		stats.derived_conditions_mut().push((condition.clone(), parent.display.clone()));
 	}
 }

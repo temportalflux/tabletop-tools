@@ -66,7 +66,7 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 							};
 							ApplyRestEffect::RestoreResourceUses { data_path: data_path.clone(), amount: uses_to_remove }
 						}
-						RestEffect::GrantCondition(Indirect::Custom(condition)) => {
+						RestEffect::GrantCondition(Indirect::Object(condition)) => {
 							ApplyRestEffect::GrantCondition(condition.clone())
 						}
 						RestEffect::GrantCondition(Indirect::Id(condition_id)) => {
@@ -391,7 +391,7 @@ fn ProjectedRestorations(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 						}
 					}
 				}
-				RestEffect::GrantCondition(Indirect::Custom(condition)) => {
+				RestEffect::GrantCondition(Indirect::Object(condition)) => {
 					// TODO: show expand button to inspect condition
 					sections.push(html!(<li>
 						{"Grant condition "}{&condition.name}{" (via "}{&source_str}{")."}

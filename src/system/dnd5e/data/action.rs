@@ -230,7 +230,7 @@ mod test {
 				activation_kind: ActivationKind::Action,
 				attack: None,
 				limited_uses: None,
-				conditions_to_apply: vec![IndirectCondition::Custom(Condition {
+				conditions_to_apply: vec![IndirectCondition::Object(Condition {
 					name: "Slippery".into(),
 					..Default::default()
 				})],

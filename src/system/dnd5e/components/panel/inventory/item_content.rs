@@ -810,7 +810,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<ItemPath>) -> 
 			.iter()
 			.filter_map(|contained| match &contained.spell {
 				Indirect::Id(id) => Some(id.unversioned()),
-				Indirect::Custom(_spell) => None,
+				Indirect::Object(_spell) => None,
 			})
 			.collect::<Vec<_>>(),
 	);
@@ -826,7 +826,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<ItemPath>) -> 
 						QueryStatus::Success((_ids, spells_by_id)) => spells_by_id.get(id),
 						_ => None,
 					},
-					Indirect::Custom(spell) => Some(spell),
+					Indirect::Object(spell) => Some(spell),
 				};
 				spell.map(|spell| spell.rank as usize).unwrap_or(0)
 			}
@@ -966,7 +966,7 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 						Some(spell) => spell,
 						None => continue,
 					},
-					Indirect::Custom(spell) => spell,
+					Indirect::Object(spell) => spell,
 				};
 				// Insertion sort by rank & name
 				let order_idx = ordered_indices
@@ -987,7 +987,7 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 						Some(spell) => spell,
 						None => return Html::default(),
 					},
-					Indirect::Custom(spell) => spell,
+					Indirect::Object(spell) => spell,
 				};
 
 				let casting_stats = match has_casting {
@@ -1193,7 +1193,7 @@ fn ModalSpellContainerAvailableList(props: &ModalSpellContainerAvailableListProp
 						QueryStatus::Success((_ids, spells_by_id)) => spells_by_id.get(id),
 						_ => None,
 					},
-					Indirect::Custom(spell) => Some(spell),
+					Indirect::Object(spell) => Some(spell),
 				};
 				spell.map(|spell| spell.rank as usize).unwrap_or(0)
 			}
@@ -1299,7 +1299,7 @@ fn SpellListContainerAction(
 		.map(|contained| {
 			match &contained.spell {
 				Indirect::Id(id) => id,
-				Indirect::Custom(spell) => &spell.id,
+				Indirect::Object(spell) => &spell.id,
 			}
 			.unversioned()
 		})

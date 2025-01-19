@@ -9,7 +9,7 @@ pub type IndirectCondition = Indirect<Condition>;
 #[derive(Clone, PartialEq, Debug)]
 pub enum Indirect<V> {
 	Id(SourceId),
-	Custom(V),
+	Object(V),
 }
 
 impl<V> FromKdl<NodeContext> for Indirect<V>
@@ -23,7 +23,7 @@ where
 			"Custom" | "Specific" => {
 				// this is a custom condition node, parse it as a condition struct
 				let condition = V::from_kdl(node)?;
-				Ok(Self::Custom(condition))
+				Ok(Self::Object(condition))
 			}
 			source_id_str => {
 				let mut source_id = SourceId::from_str(source_id_str).with_context(|| {
@@ -43,7 +43,7 @@ impl<V: AsKdl> AsKdl for Indirect<V> {
 		let node = NodeBuilder::default();
 		match self {
 			Self::Id(id) => node.with_entry(id.to_string()),
-			Self::Custom(value) => {
+			Self::Object(value) => {
 				let mut node = node.with_entry("Specific");
 				node += value.as_kdl();
 				node
@@ -74,7 +74,7 @@ mod test {
 		#[test]
 		fn custom() -> anyhow::Result<()> {
 			let doc = "condition \"Specific\" name=\"Slippery\"";
-			let data = IndirectCondition::Custom(Condition { name: "Slippery".into(), ..Default::default() });
+			let data = IndirectCondition::Object(Condition { name: "Slippery".into(), ..Default::default() });
 			assert_eq_fromkdl!(IndirectCondition, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())

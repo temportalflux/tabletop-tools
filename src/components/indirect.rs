@@ -39,7 +39,7 @@ where
 			}
 			found_record.as_ref().cloned()
 		}
-		Indirect::Custom(object) => Some(Rc::new(object.clone())),
+		Indirect::Object(object) => Some(Rc::new(object.clone())),
 	};
 
 	let Some(object) = object else {
